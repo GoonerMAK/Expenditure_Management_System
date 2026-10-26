@@ -126,7 +126,7 @@ describe('Login page', () => {
     expect(mockedPost).not.toHaveBeenCalled();
   });
 
-  it.failing('redirects an already signed-in user to the dashboard on its own', async () => {
+  it('redirects an already signed-in user to the dashboard on its own', async () => {
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     mockedUseAuth.mockReturnValue({ user: { id: '1' }, loading: false });
 

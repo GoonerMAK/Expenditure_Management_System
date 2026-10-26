@@ -141,18 +141,6 @@ describe('project.controller', () => {
       expectResponse(res, 200, page);
     });
 
-    it('forwards undefined offset and limit when the query is empty', async () => {
-      service.getAllProjects.mockResolvedValue({
-        data: [],
-        pagination: { offset: undefined, limit: undefined, totalItems: 0, totalPages: NaN, hasMore: false },
-      });
-      const res = mockResponse();
-
-      await projectController.getAllProjects(mockRequest({ query: {} }), res);
-
-      expect(service.getAllProjects).toHaveBeenCalledWith(undefined, undefined);
-    });
-
     it('responds 500 when the service throws', async () => {
       service.getAllProjects.mockRejectedValue(new Error('boom'));
       const res = mockResponse();

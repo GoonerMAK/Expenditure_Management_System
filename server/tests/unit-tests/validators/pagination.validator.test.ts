@@ -7,17 +7,17 @@ describe('pagination.validator paginationQuerySchema', () => {
     expect(paginationQuerySchema.parse({ offset: '12', limit: '6' })).toEqual({ offset: 12, limit: 6 });
   });
 
-  it.failing('defaults offset to 0 and limit to 6 when omitted', () => {
+  it('defaults offset to 0 and limit to 6 when omitted', () => {
     expect(paginationQuerySchema.parse({})).toEqual({ offset: 0, limit: 6 });
   });
 
-  it('currently leaves offset and limit undefined when omitted', () => {
-    expect(paginationQuerySchema.parse({})).toEqual({});
+  it('defaults only the missing field', () => {
+    expect(paginationQuerySchema.parse({ limit: '20' })).toEqual({ offset: 0, limit: 20 });
   });
 
   describe('offset', () => {
     it('accepts 0', () => {
-      expect(paginationQuerySchema.parse({ offset: '0' })).toEqual({ offset: 0 });
+      expect(paginationQuerySchema.parse({ offset: '0' })).toEqual({ offset: 0, limit: 6 });
     });
 
     it.each(['-1', 'abc', ''])('rejects %p', (offset) => {
@@ -25,11 +25,11 @@ describe('pagination.validator paginationQuerySchema', () => {
     });
 
     it('truncates a decimal value', () => {
-      expect(paginationQuerySchema.parse({ offset: '6.9' })).toEqual({ offset: 6 });
+      expect(paginationQuerySchema.parse({ offset: '6.9' })).toEqual({ offset: 6, limit: 6 });
     });
 
     it('accepts a value with trailing characters because parseInt is lenient', () => {
-      expect(paginationQuerySchema.parse({ offset: '6abc' })).toEqual({ offset: 6 });
+      expect(paginationQuerySchema.parse({ offset: '6abc' })).toEqual({ offset: 6, limit: 6 });
     });
 
     it('rejects a repeated query parameter', () => {
@@ -42,7 +42,7 @@ describe('pagination.validator paginationQuerySchema', () => {
       ['1', 1],
       ['100', 100],
     ])('accepts the boundary %p', (limit, expected) => {
-      expect(paginationQuerySchema.parse({ limit })).toEqual({ limit: expected });
+      expect(paginationQuerySchema.parse({ limit })).toEqual({ offset: 0, limit: expected });
     });
 
     it.each(['0', '101', '-5', 'all', ''])('rejects %p', (limit) => {

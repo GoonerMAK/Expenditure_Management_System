@@ -78,19 +78,19 @@ describe('AddFinancialForm', () => {
     expect(trigger).not.toHaveBeenCalled();
   });
 
-  it.failing('requests projects with pagination arguments the endpoint requires', () => {
+  it('requests projects with pagination arguments the endpoint requires', () => {
     setup();
 
     expect(mockedGetProjects).toHaveBeenCalledWith(expect.objectContaining({ offset: expect.any(Number) }));
   });
 
-  it.failing('renders the project picker from the paginated projects response', () => {
+  it('renders the project picker from the paginated projects response', () => {
     setup({ data: paginatedProjects });
 
     expect(screen.getByRole('button', { name: /select project/i })).toBeInTheDocument();
   });
 
-  it.failing('submits parsed amounts for the selected project', async () => {
+  it('submits parsed amounts for the selected project', async () => {
     const { trigger, user } = setup({ data: paginatedProjects });
 
     await user.click(screen.getByRole('button', { name: /select project/i }));

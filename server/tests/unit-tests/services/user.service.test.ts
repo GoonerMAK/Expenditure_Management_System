@@ -7,7 +7,7 @@ jest.mock('../../../src/repositories/user.repository.js');
 jest.mock('bcrypt', () => ({
   __esModule: true,
   default: {
-    genSalt: jest.fn().mockResolvedValue('$2b$10$generatedsalt'),
+    genSalt: jest.fn(),
     hash: jest.fn(),
     compare: jest.fn(),
   },
@@ -25,6 +25,26 @@ describe('user.service', () => {
 
   afterEach(() => {
     jest.resetAllMocks();
+  });
+
+  describe('salt rounds', () => {
+    afterEach(() => {
+      userService.setSaltRounds(10);
+    });
+
+    it('defaults to 10 rounds', () => {
+      expect(userService.getSaltRounds()).toBe(10);
+    });
+
+    it('hashes with the rounds set through the setter', async () => {
+      userService.setSaltRounds(12);
+      repo.updateUser.mockResolvedValue(buildUser());
+
+      await userService.updateUser(ID, undefined, 'newSecret');
+
+      expect(userService.getSaltRounds()).toBe(12);
+      expect(hash).toHaveBeenCalledWith('newSecret', 12);
+    });
   });
 
   describe('createUser', () => {
@@ -82,14 +102,14 @@ describe('user.service', () => {
       );
     });
 
-    it.failing('hashes with a resolved salt rather than a pending promise', async () => {
+    it('hashes with 10 salt rounds rather than a pending promise', async () => {
       repo.getUserByUsername.mockResolvedValue(null);
       repo.getUserByEmail.mockResolvedValue(null);
       repo.createUser.mockResolvedValue(buildUser());
 
       await create();
 
-      expect(['string', 'number']).toContain(typeof hash.mock.calls[0][1]);
+      expect(hash).toHaveBeenCalledWith('secret123', 10);
     });
 
     it('rejects a duplicate username without creating the user', async () => {
@@ -157,7 +177,7 @@ describe('user.service', () => {
 
       await userService.updateUser(ID, undefined, 'newSecret');
 
-      expect(hash).toHaveBeenCalledWith('newSecret', expect.anything());
+      expect(hash).toHaveBeenCalledWith('newSecret', 10);
       expect(repo.updateUser).toHaveBeenCalledWith(ID, { password: HASHED });
     });
 

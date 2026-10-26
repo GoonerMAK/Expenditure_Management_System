@@ -122,7 +122,7 @@ describe('SingleProject (single project card)', () => {
     expect(screen.getByLabelText('Revised Budget')).toHaveValue(12000);
   });
 
-  it.failing('keeps the project fields after the financial data fills in', async () => {
+  it('keeps the project fields after the financial data fills in', async () => {
     setup();
 
     await waitFor(() => expect(screen.getByLabelText('Year')).toHaveValue(2026));
