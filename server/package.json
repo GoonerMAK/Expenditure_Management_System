@@ -7,6 +7,9 @@
   "scripts": {
     "start": "tsc --watch",
     "test": "jest --maxWorkers=1",
+    "test:unit": "jest tests/unit-tests",
+    "test:unit:coverage": "jest tests/unit-tests --coverage",
+    "test:integration": "jest tests/integration-tests --maxWorkers=1",
     "build": "tsc",
     "dev": "node dist/index.js"
   },

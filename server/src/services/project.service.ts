@@ -67,10 +67,24 @@ export const deleteProject = async (id: string) => {
     }
 };
 
-export const getAllProjects = async () => {
+export const getAllProjects = async (offset: number, limit: number) => {
     try {
-        const projects = await projectRepository.getAllProjects();
-        return projects;
+        const [projects, totalCount] = await Promise.all([
+            projectRepository.getAllProjects(offset, limit),
+            projectRepository.getProjectsCount()
+        ]);
+
+        const result = {
+            data: projects,
+            pagination: {
+                offset,
+                limit,
+                totalItems: totalCount,
+                totalPages: Math.ceil(totalCount / limit),
+                hasMore: (offset + limit) < totalCount,
+            }
+        }
+        return result;
     } catch (error) {
         throw new Error(`Failed to fetch projects: ${error}`);
     }
