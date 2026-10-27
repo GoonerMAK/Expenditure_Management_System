@@ -2,11 +2,14 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Link } from 'react-router-dom';
 
-import { useGetProjectsQuery } from '../redux/project-api';
+import { useGetBudgetSummaryQuery, useGetProjectsQuery } from '../redux/project-api';
 import { useGetUsersQuery } from '../redux/user-api';
 
 import { useState } from 'react';
 import AppPagination from './pagination';
+import BudgetSummary from './budget-summary';
+import { formatAmount, formatPercent } from '../lib/utils';
+import { Badge } from './ui/badge';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -15,6 +18,8 @@ const ShowProjects = () => {
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
   const { data: projectsData, isLoading: projectsLoading } = useGetProjectsQuery({ offset, limit: ITEMS_PER_PAGE });
   const { data: users = [], isLoading: usersLoading } = useGetUsersQuery();
+  // Financial data is edited through another API slice, so refetch whenever the dashboard opens
+  const { data: summary } = useGetBudgetSummaryQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const projects = projectsData?.data || [];
   const totalItems = projectsData?.pagination.totalItems || 0;
@@ -42,6 +47,7 @@ const ShowProjects = () => {
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl">Projects</h1>
       </div>
+      {summary && <BudgetSummary summary={summary} />}
       <form>
         <div className="relative">
           <Input
@@ -68,10 +74,16 @@ const ShowProjects = () => {
       ) : (
         <div className="flex grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           
-          {projects.map((project) => (
+          {projects.map((project) => {
+            const budget = summary?.projects.find(p => p.project_id === project.id);
+
+            return (
             <div key={project.id} className="rounded-lg border shadow-sm p-6">
               <div>
-              <h3 className="text-lg font-semibold">{project.project_name}</h3>
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-lg font-semibold">{project.project_name}</h3>
+                {budget?.over_budget && <Badge variant="destructive" className="shrink-0 whitespace-nowrap">Over budget</Badge>}
+              </div>
               <p className="text-sm text-muted-foreground mb-2">{project.description}</p>
               <p className="text-sm text-muted-foreground">
                 Category: {project.category_name || 'Loading...'}
@@ -88,6 +100,12 @@ const ShowProjects = () => {
               <p className="text-sm text-muted-foreground">
                 Updated Date: {formatDate(project.updated_at)}
               </p>
+              {budget && (
+                <p className="text-sm font-medium mt-2">
+                  Spent {formatAmount(budget.spent)} of {formatAmount(budget.budget)} ({formatPercent(budget.percent_used)})
+                  {' · '}Remaining {formatAmount(budget.remaining)}
+                </p>
+              )}
               </div>
               <div className="relative top-4 right-4">
                 <Link to={`/projects/${project.id}`}>
@@ -95,7 +113,8 @@ const ShowProjects = () => {
                 </Link>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

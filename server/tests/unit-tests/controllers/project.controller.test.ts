@@ -180,4 +180,25 @@ describe('project.controller', () => {
       expectResponse(res, 500, { error: 'boom' });
     });
   });
+
+  describe('getBudgetSummary', () => {
+    it('responds 200 with the summary', async () => {
+      const summary = { overall: { budget: 0 }, projects: [] };
+      service.getBudgetSummary.mockResolvedValue(summary as never);
+      const res = mockResponse();
+
+      await projectController.getBudgetSummary(mockRequest(), res);
+
+      expectResponse(res, 200, summary);
+    });
+
+    it('responds 500 when the service throws', async () => {
+      service.getBudgetSummary.mockRejectedValue(new Error('boom'));
+      const res = mockResponse();
+
+      await projectController.getBudgetSummary(mockRequest(), res);
+
+      expectResponse(res, 500, { error: 'boom' });
+    });
+  });
 });

@@ -73,6 +73,16 @@ describe('RTK Query APIs', () => {
       expect(result.data).toEqual({ id: 'p1' });
     });
 
+    it('fetches the budget summary', async () => {
+      const { requests } = mockServer(() => ({ body: { overall: {}, projects: [] } }));
+      const store = makeStore();
+
+      const result = await store.dispatch(projectApi.endpoints.getBudgetSummary.initiate());
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}projects/summary`, method: 'GET' }));
+      expect(result.data).toEqual({ overall: {}, projects: [] });
+    });
+
     it('creates a project with a POST body', async () => {
       const { requests } = mockServer(() => ({ body: { id: 'p1' } }));
       const store = makeStore();

@@ -68,3 +68,20 @@ export interface Pagination<T> {
         hasMore: boolean;
     };
 }
+export interface BudgetTotals {
+    budget: number;
+    spent: number;
+    remaining: number;
+    percent_used: number | null;
+    over_budget: boolean;
+}
+
+export interface ProjectBudget extends BudgetTotals {
+    project_id: string;
+    project_name: string;
+}
+
+export interface BudgetSummary {
+    overall: BudgetTotals & { over_budget_count: number };
+    projects: ProjectBudget[];
+}

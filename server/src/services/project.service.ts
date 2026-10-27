@@ -101,3 +101,41 @@ export const getProjectById = async (id: string) => {
         throw new Error(`Failed to fetch project: ${error}`);
     }
 };
+
+
+const toBudgetTotals = (budget: number, spent: number) => ({
+    budget,
+    spent,
+    remaining: budget - spent,
+    percent_used: budget > 0 ? Math.round((spent / budget) * 1000) / 10 : null,
+    over_budget: spent > budget,
+});
+
+export const getBudgetSummary = async () => {
+    try {
+        const projects = await projectRepository.getProjectsWithFinancialData();
+
+        const projectTotals = projects.map((project) => {
+            // A revised budget replaces the initial one for that entry
+            const budget = project.financial_data.reduce(
+                (sum, entry) => sum + (entry.revised_budget || entry.initial_budget || 0), 0
+            );
+            const spent = project.financial_data.reduce((sum, entry) => sum + (entry.expenditure || 0), 0);
+
+            return { project_id: project.id, project_name: project.project_name, ...toBudgetTotals(budget, spent) };
+        });
+
+        const budget = projectTotals.reduce((sum, project) => sum + project.budget, 0);
+        const spent = projectTotals.reduce((sum, project) => sum + project.spent, 0);
+
+        return {
+            overall: {
+                ...toBudgetTotals(budget, spent),
+                over_budget_count: projectTotals.filter((project) => project.over_budget).length,
+            },
+            projects: projectTotals,
+        };
+    } catch (error) {
+        throw new Error(`Failed to fetch budget summary: ${error}`);
+    }
+};
