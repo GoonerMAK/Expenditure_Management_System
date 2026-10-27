@@ -11,5 +11,6 @@ projectRouter.post('/projects', isAuthenticated, authorizeRoles('Contributor', '
 projectRouter.put('/projects/:id', isAuthenticated, authorizeRoles('Contributor', 'Administrator'), validateParams(projectParamsSchema), validateRequest(projectSchema), projectController.updateProject);
 projectRouter.delete('/projects/:id', isAuthenticated, authorizeRoles('Contributor', 'Administrator'), validateParams(projectParamsSchema), projectController.deleteProject);
 projectRouter.get('/projects', isAuthenticated, validateQuery(paginationQuerySchema), projectController.getAllProjects);
+projectRouter.get('/projects/summary', isAuthenticated, projectController.getBudgetSummary);
 projectRouter.get('/projects/:id', isAuthenticated, validateParams(projectParamsSchema), projectController.getProjectById);
 

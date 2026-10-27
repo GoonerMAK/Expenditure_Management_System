@@ -82,3 +82,13 @@ export const getProjectById = async (req: Request<ProjectParams, unknown, unknow
         res.status(500).json({ error: error.message });
     }
 };
+
+
+export const getBudgetSummary = async (_req: Request<unknown, unknown, unknown, unknown>, res: Response) => {
+    try {
+        const summary = await projectService.getBudgetSummary();
+        res.status(200).json(summary);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

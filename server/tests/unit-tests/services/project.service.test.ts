@@ -236,4 +236,78 @@ describe('project.service', () => {
       await expect(projectService.getProjectById(ID)).rejects.toThrow('Failed to fetch project: Error: timeout');
     });
   });
+
+  describe('getBudgetSummary', () => {
+    const entry = (expenditure: number | null, initial_budget: number | null, revised_budget: number | null) => ({
+      expenditure,
+      initial_budget,
+      revised_budget,
+    });
+
+    it('totals each project, preferring the revised budget over the initial one', async () => {
+      repo.getProjectsWithFinancialData.mockResolvedValue([
+        { id: ID, project_name: 'Bridge', financial_data: [entry(300, 1000, null), entry(200, 1000, 1500)] },
+      ]);
+
+      const summary = await projectService.getBudgetSummary();
+
+      expect(summary.projects).toEqual([
+        {
+          project_id: ID,
+          project_name: 'Bridge',
+          budget: 2500,
+          spent: 500,
+          remaining: 2000,
+          percent_used: 20,
+          over_budget: false,
+        },
+      ]);
+    });
+
+    it('builds overall totals and counts over-budget projects', async () => {
+      repo.getProjectsWithFinancialData.mockResolvedValue([
+        { id: ID, project_name: 'Bridge', financial_data: [entry(1200, 1000, null)] },
+        { id: OTHER_ID, project_name: 'Road', financial_data: [entry(100, 2000, null)] },
+      ]);
+
+      const summary = await projectService.getBudgetSummary();
+
+      expect(summary.projects[0]).toEqual(expect.objectContaining({ remaining: -200, percent_used: 120, over_budget: true }));
+      expect(summary.overall).toEqual({
+        budget: 3000,
+        spent: 1300,
+        remaining: 1700,
+        percent_used: 43.3,
+        over_budget: false,
+        over_budget_count: 1,
+      });
+    });
+
+    it('treats missing amounts as zero and leaves percent empty when there is no budget', async () => {
+      repo.getProjectsWithFinancialData.mockResolvedValue([
+        { id: ID, project_name: 'Empty', financial_data: [entry(null, null, null)] },
+        { id: OTHER_ID, project_name: 'No budget', financial_data: [entry(50, null, null)] },
+      ]);
+
+      const summary = await projectService.getBudgetSummary();
+
+      expect(summary.projects[0]).toEqual(expect.objectContaining({ budget: 0, spent: 0, percent_used: null, over_budget: false }));
+      expect(summary.projects[1]).toEqual(expect.objectContaining({ budget: 0, spent: 50, percent_used: null, over_budget: true }));
+    });
+
+    it('returns zero totals when there are no projects', async () => {
+      repo.getProjectsWithFinancialData.mockResolvedValue([]);
+
+      await expect(projectService.getBudgetSummary()).resolves.toEqual({
+        overall: { budget: 0, spent: 0, remaining: 0, percent_used: null, over_budget: false, over_budget_count: 0 },
+        projects: [],
+      });
+    });
+
+    it('wraps repository errors', async () => {
+      repo.getProjectsWithFinancialData.mockRejectedValue(new Error('timeout'));
+
+      await expect(projectService.getBudgetSummary()).rejects.toThrow('Failed to fetch budget summary: Error: timeout');
+    });
+  });
 });

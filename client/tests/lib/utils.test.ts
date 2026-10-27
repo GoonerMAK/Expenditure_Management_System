@@ -1,4 +1,4 @@
-import { cn } from '../../src/lib/utils';
+import { cn, formatAmount, formatPercent } from '../../src/lib/utils';
 
 describe('cn', () => {
   it('joins class names', () => {
@@ -23,5 +23,29 @@ describe('cn', () => {
 
   it('returns an empty string with no input', () => {
     expect(cn()).toBe('');
+  });
+});
+
+describe('formatAmount', () => {
+  it('adds thousand separators', () => {
+    expect(formatAmount(1234567)).toBe('1,234,567');
+  });
+
+  it('keeps at most two decimals', () => {
+    expect(formatAmount(10.456)).toBe('10.46');
+  });
+
+  it('formats negative amounts', () => {
+    expect(formatAmount(-200)).toBe('-200');
+  });
+});
+
+describe('formatPercent', () => {
+  it('adds a percent sign', () => {
+    expect(formatPercent(43.3)).toBe('43.3%');
+  });
+
+  it('shows N/A when there is no budget to compare against', () => {
+    expect(formatPercent(null)).toBe('N/A');
   });
 });
