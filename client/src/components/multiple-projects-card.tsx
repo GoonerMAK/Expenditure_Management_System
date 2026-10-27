@@ -5,11 +5,19 @@ import { Link } from 'react-router-dom';
 import { useGetProjectsQuery } from '../redux/project-api';
 import { useGetUsersQuery } from '../redux/user-api';
 
+import { useState } from 'react';
+import AppPagination from './pagination';
+
+const ITEMS_PER_PAGE = 6;
 
 const ShowProjects = () => {
-  const { data: projects = [], isLoading: projectsLoading } = useGetProjectsQuery();
+  const [currentPage, setCurrentPage] = useState(1);
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+  const { data: projectsData, isLoading: projectsLoading } = useGetProjectsQuery({ offset, limit: ITEMS_PER_PAGE });
   const { data: users = [], isLoading: usersLoading } = useGetUsersQuery();
 
+  const projects = projectsData?.data || [];
+  const totalItems = projectsData?.pagination.totalItems || 0;
 
   function formatDate(dateString: Date | undefined | null) {
     if (!dateString) return 'Not specified';
@@ -52,7 +60,9 @@ const ShowProjects = () => {
             <p className="text-sm text-muted-foreground">
               You can start analyzing as soon as you add a project.
             </p>
-            <Button className="mt-4">Add Project</Button>
+            <Link to="/add-project">
+              <Button className="mt-4">Add Project</Button>
+            </Link>
           </div>
         </div>
       ) : (
@@ -67,10 +77,10 @@ const ShowProjects = () => {
                 Category: {project.category_name || 'Loading...'}
               </p>
               <p className="text-sm text-muted-foreground">
-                Created by: {users.find(user => user.id === project.created_by_id)?.name || 'Loading...'}
+                Created by: {users.find(user => user.id === project.created_by_id)?.username || 'N/A'}
               </p>
               <p className="text-sm text-muted-foreground">
-                Start Date: {formatDate(project.start_date)}
+                Start Date: {formatDate(project.start_date) || 'N/A'}
               </p>
               <p className="text-sm text-muted-foreground">
                 Created Date: {formatDate(project.created_at)}
@@ -88,6 +98,14 @@ const ShowProjects = () => {
           ))}
         </div>
       )}
+
+      <AppPagination
+        currentPage={currentPage}
+        totalItems={totalItems}
+        itemsPerPage={ITEMS_PER_PAGE}
+        onPageChange={setCurrentPage}
+      />
+      
     </main>
   );
 };

@@ -30,7 +30,8 @@ interface FinancialData {
 
 
 const AddFinancialForm = () => {
-    const { data: projects = [], error, isLoading } = useGetProjectsQuery();
+    const { data: projectsPage, error, isLoading } = useGetProjectsQuery({ offset: 0, limit: 100 });
+    const projects = projectsPage?.data ?? [];
     const [addFinancialData] = useAddFinancialDataMutation();
 
     const form = useForm<FinancialData>({

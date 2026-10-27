@@ -1,0 +1,18 @@
+version: "3.9"
+
+services: 
+  postgres:
+    image: postgres:alpine3.20
+    container_name: expenditure-project-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: expenditure_management
+      POSTGRES_PASSWORD: "MAK#9555"
+      POSTGRES_USER: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

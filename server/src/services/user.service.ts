@@ -2,7 +2,13 @@ import bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
 import * as userRepository from '../repositories/user.repository.js';
 
-const salt = bcrypt.genSalt();
+let saltRounds = 10;
+
+export const getSaltRounds = () => saltRounds;
+
+export const setSaltRounds = (rounds: number) => {
+    saltRounds = rounds;
+};
 
 export const createUser = async (
     username: string,
@@ -27,7 +33,7 @@ export const createUser = async (
             throw new Error('Email already exists');
         }
 
-        const hashedPassword = await bcrypt.hash(password, salt);
+        const hashedPassword = await bcrypt.hash(password, getSaltRounds());
 
         const user = await userRepository.createUser(username, hashedPassword, email, name, role_id, role_name, age, gender, nationality);
         return user;
@@ -51,7 +57,7 @@ export const updateUser = async (
     try {
         const data: any = {};
         if (username !== undefined) data.username = username;
-        if (password !== undefined) data.password = await bcrypt.hash(password, salt);
+        if (password !== undefined) data.password = await bcrypt.hash(password, getSaltRounds());
         if (email !== undefined) data.email = email;
         if (name !== undefined) data.name = name;
         if (role_id !== undefined) data.role_id = role_id;

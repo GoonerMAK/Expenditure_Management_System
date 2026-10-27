@@ -9,6 +9,11 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
 
+    "baseUrl": ".",  
+    "paths": {                          
+      "@/*": ["src/*"]
+    },
+
     /* Bundler mode */
     "moduleResolution": "Node",
     "allowImportingTsExtensions": true,
