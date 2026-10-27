@@ -31,7 +31,7 @@ describe('project.controller', () => {
       service.createProject.mockResolvedValue(project);
       const res = mockResponse();
 
-      await projectController.createProject(mockRequest({ body }), res);
+      await projectController.createProject(mockRequest({ body, user: { id: ID } }), res);
 
       expect(service.createProject).toHaveBeenCalledWith(
         'Bridge Renovation',
@@ -40,7 +40,7 @@ describe('project.controller', () => {
         'Infrastructure',
         START,
         END,
-        OTHER_ID,
+        ID,
       );
       expectResponse(res, 201, project);
     });
@@ -56,7 +56,7 @@ describe('project.controller', () => {
   });
 
   describe('updateProject', () => {
-    it('responds 200 and forwards the path id with the body fields', async () => {
+    it('responds 200 and forwards the path id with the body fields, without changing the owner', async () => {
       const project = buildProject();
       service.updateProject.mockResolvedValue(project);
       const res = mockResponse();
@@ -71,7 +71,6 @@ describe('project.controller', () => {
         'Infrastructure',
         START,
         END,
-        OTHER_ID,
       );
       expectResponse(res, 200, project);
     });
