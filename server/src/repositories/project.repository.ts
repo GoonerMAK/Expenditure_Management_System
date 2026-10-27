@@ -62,12 +62,22 @@ export const deleteProject = async (id: string) => {
     });
 };
 
-export const getAllProjects = async () => {
-    return await prisma.project.findMany();
+export const getAllProjects = async (offset: number, limit: number) => {
+    return await prisma.project.findMany({
+        skip: offset,
+        take: limit,
+        orderBy: {
+            created_at: 'asc'
+        }
+    });
 };
 
 export const getProjectById = async (id: string) => {
     return await prisma.project.findUnique({
         where: { id },
     });
+};
+
+export const getProjectsCount = async () => {
+    return await prisma.project.count();
 };

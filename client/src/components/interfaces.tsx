@@ -57,3 +57,14 @@ export interface Username {
     id: string;
     username: string,
 }
+
+export interface Pagination<T> {
+    data: T[];
+    pagination: {
+        offset: number;
+        limit: number;
+        totalItems: number;
+        totalPages: number;
+        hasMore: boolean;
+    };
+}

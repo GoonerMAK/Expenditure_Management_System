@@ -79,20 +79,22 @@ const SingleProject = () => {
         }
     });
 
-    const { setValue, watch } = form;
+    const { setValue, watch, getValues, reset } = form;
 
 
     useEffect(() => {
         if (project) {
-            form.reset({
+            reset({
+                ...getValues(),
                 project_name: project.project_name,
                 description: project.description,
+                category_id: project.category_id,
                 category_name: project.category_name,
                 start_date: new Date(project.start_date).toISOString(),
                 end_date: new Date(project.end_date).toISOString(),
             });
         }
-    }, [project, form]);
+    }, [project, getValues, reset]);
 
     useEffect(() => {
         if (authUser) {
@@ -102,7 +104,8 @@ const SingleProject = () => {
 
     useEffect(() => {
         if (financialData) {
-            form.reset({
+            reset({
+                ...getValues(),
                 year: financialData.year,
                 month: financialData.month,
                 expenditure: financialData.expenditure,
@@ -110,7 +113,7 @@ const SingleProject = () => {
                 revised_budget: financialData.revised_budget,
             });
         }
-    }, [financialData, form]);
+    }, [financialData, getValues, reset]);
 
 
     const onSubmit = async (data: Project & FinancialData) => {
