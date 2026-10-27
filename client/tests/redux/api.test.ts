@@ -83,6 +83,24 @@ describe('RTK Query APIs', () => {
       expect(result.data).toEqual({ overall: {}, projects: [] });
     });
 
+    it('fetches the budget by category', async () => {
+      const { requests } = mockServer(() => ({ body: [] }));
+      const store = makeStore();
+
+      await store.dispatch(projectApi.endpoints.getBudgetByCategory.initiate());
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}projects/summary/categories`, method: 'GET' }));
+    });
+
+    it('fetches the trend for a project', async () => {
+      const { requests } = mockServer(() => ({ body: { monthly: [], yearly: [] } }));
+      const store = makeStore();
+
+      await store.dispatch(projectApi.endpoints.getProjectTrend.initiate('p1'));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}projects/p1/trend`, method: 'GET' }));
+    });
+
     it('creates a project with a POST body', async () => {
       const { requests } = mockServer(() => ({ body: { id: 'p1' } }));
       const store = makeStore();

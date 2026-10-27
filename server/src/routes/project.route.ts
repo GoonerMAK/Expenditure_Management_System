@@ -12,5 +12,7 @@ projectRouter.put('/projects/:id', isAuthenticated, authorizeRoles('Contributor'
 projectRouter.delete('/projects/:id', isAuthenticated, authorizeRoles('Contributor', 'Administrator'), validateParams(projectParamsSchema), projectController.deleteProject);
 projectRouter.get('/projects', isAuthenticated, validateQuery(paginationQuerySchema), projectController.getAllProjects);
 projectRouter.get('/projects/summary', isAuthenticated, projectController.getBudgetSummary);
+projectRouter.get('/projects/summary/categories', isAuthenticated, projectController.getBudgetByCategory);
+projectRouter.get('/projects/:id/trend', isAuthenticated, validateParams(projectParamsSchema), projectController.getProjectTrend);
 projectRouter.get('/projects/:id', isAuthenticated, validateParams(projectParamsSchema), projectController.getProjectById);
 

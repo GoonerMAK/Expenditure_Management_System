@@ -234,5 +234,17 @@ describe('ShowProjects (multiple projects card)', () => {
       expect(screen.queryByRole('region', { name: 'Budget summary' })).not.toBeInTheDocument();
       expect(screen.queryByText(/Spent/)).not.toBeInTheDocument();
     });
+
+    it('shows an error with a retry button when the summary fails to load', async () => {
+      const refetch = jest.fn();
+      mockedGetSummary.mockReturnValue(queryResult({ data: undefined, isError: true, refetch }));
+
+      renderCard();
+
+      expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load the budget summary.");
+      expect(screen.getByRole('heading', { name: 'Bridge Renovation' })).toBeInTheDocument();
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
+      expect(refetch).toHaveBeenCalledTimes(1);
+    });
   });
 });

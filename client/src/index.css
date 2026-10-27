@@ -33,9 +33,15 @@
       --ring: 20 14.3% 4.1%;
 
       --radius: 0.5rem;
+
+      --chart-budget: #2a78d6;
+      --chart-spent: #eb6834;
     }
 
     .dark {
+      --chart-budget: #3987e5;
+      --chart-spent: #d95926;
+
       --background: 20 14.3% 4.1%;
       --foreground: 60 9.1% 97.8%;
 

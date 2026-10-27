@@ -92,3 +92,26 @@ export const getBudgetSummary = async (_req: Request<unknown, unknown, unknown, 
         res.status(500).json({ error: error.message });
     }
 };
+
+export const getBudgetByCategory = async (_req: Request<unknown, unknown, unknown, unknown>, res: Response) => {
+    try {
+        const categories = await projectService.getBudgetByCategory();
+        res.status(200).json(categories);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getProjectTrend = async (req: Request<ProjectParams, unknown, unknown, unknown>, res: Response) => {
+    const { id } = req.params;
+    try {
+        const trend = await projectService.getProjectTrend(id);
+        if (!trend) {
+            res.status(404).json({ error: `Project with id ${id} not found` });
+        } else {
+            res.status(200).json(trend);
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
