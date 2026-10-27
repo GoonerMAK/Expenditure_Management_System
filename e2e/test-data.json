@@ -1,0 +1,9 @@
+{
+  "password": "Test@1234",
+  "users": {
+    "admin": { "email": "e2e.admin@example.com", "username": "e2e_admin", "role": "Administrator" },
+    "contributor": { "email": "e2e.contributor@example.com", "username": "e2e_contributor", "role": "Contributor" },
+    "readOnly": { "email": "e2e.readonly@example.com", "username": "e2e_readonly", "role": "Read-only" }
+  },
+  "category": "E2E Infrastructure"
+}

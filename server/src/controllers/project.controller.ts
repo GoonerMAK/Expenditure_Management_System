@@ -4,7 +4,8 @@ import { Project, ProjectParams } from '../validators/project.validator.js';
 import { PaginationQuery } from '../validators/pagination.validator.js';
 
 export const createProject = async (req: Request<unknown, unknown, Project, unknown>, res: Response) => {
-    const { project_name, description, category_id, category_name, start_date, end_date, created_by_id } = req.body;
+    const { project_name, description, category_id, category_name, start_date, end_date } = req.body;
+    const created_by_id = req.user?.id;
     try {
         const newProject = await projectService.createProject(
             project_name,
@@ -23,7 +24,7 @@ export const createProject = async (req: Request<unknown, unknown, Project, unkn
 
 export const updateProject = async (req: Request<ProjectParams, unknown, Project, unknown>, res: Response) => {
     const { id } = req.params;
-    const { project_name, description, category_id, category_name, start_date, end_date, created_by_id } = req.body;
+    const { project_name, description, category_id, category_name, start_date, end_date } = req.body;
     try {
         const updatedProject = await projectService.updateProject(
             id,
@@ -32,8 +33,7 @@ export const updateProject = async (req: Request<ProjectParams, unknown, Project
             category_id,
             category_name,
             start_date,
-            end_date,
-            created_by_id
+            end_date
         );
         if (!updatedProject) {
             res.status(404).json({ error: `Project with id ${id} not found` });
