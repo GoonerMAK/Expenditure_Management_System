@@ -237,16 +237,18 @@ describe('project.service', () => {
     });
   });
 
-  describe('getBudgetSummary', () => {
-    const entry = (expenditure: number | null, initial_budget: number | null, revised_budget: number | null) => ({
-      expenditure,
-      initial_budget,
-      revised_budget,
-    });
+  const entry = (expenditure: number | null, initial_budget: number | null, revised_budget: number | null) => ({
+    expenditure,
+    initial_budget,
+    revised_budget,
+  });
 
+  const inCategory = (category_id: string, category_name: string) => ({ category_id, category_name });
+
+  describe('getBudgetSummary', () => {
     it('totals each project, preferring the revised budget over the initial one', async () => {
       repo.getProjectsWithFinancialData.mockResolvedValue([
-        { id: ID, project_name: 'Bridge', financial_data: [entry(300, 1000, null), entry(200, 1000, 1500)] },
+        { id: ID, project_name: 'Bridge', ...inCategory('c1', 'Roads'), financial_data: [entry(300, 1000, null), entry(200, 1000, 1500)] },
       ]);
 
       const summary = await projectService.getBudgetSummary();
@@ -266,8 +268,8 @@ describe('project.service', () => {
 
     it('builds overall totals and counts over-budget projects', async () => {
       repo.getProjectsWithFinancialData.mockResolvedValue([
-        { id: ID, project_name: 'Bridge', financial_data: [entry(1200, 1000, null)] },
-        { id: OTHER_ID, project_name: 'Road', financial_data: [entry(100, 2000, null)] },
+        { id: ID, project_name: 'Bridge', ...inCategory('c1', 'Roads'), financial_data: [entry(1200, 1000, null)] },
+        { id: OTHER_ID, project_name: 'Road', ...inCategory('c1', 'Roads'), financial_data: [entry(100, 2000, null)] },
       ]);
 
       const summary = await projectService.getBudgetSummary();
@@ -285,8 +287,8 @@ describe('project.service', () => {
 
     it('treats missing amounts as zero and leaves percent empty when there is no budget', async () => {
       repo.getProjectsWithFinancialData.mockResolvedValue([
-        { id: ID, project_name: 'Empty', financial_data: [entry(null, null, null)] },
-        { id: OTHER_ID, project_name: 'No budget', financial_data: [entry(50, null, null)] },
+        { id: ID, project_name: 'Empty', ...inCategory('c1', 'Roads'), financial_data: [entry(null, null, null)] },
+        { id: OTHER_ID, project_name: 'No budget', ...inCategory('c1', 'Roads'), financial_data: [entry(50, null, null)] },
       ]);
 
       const summary = await projectService.getBudgetSummary();
@@ -308,6 +310,88 @@ describe('project.service', () => {
       repo.getProjectsWithFinancialData.mockRejectedValue(new Error('timeout'));
 
       await expect(projectService.getBudgetSummary()).rejects.toThrow('Failed to fetch budget summary: Error: timeout');
+    });
+  });
+
+  describe('getBudgetByCategory', () => {
+    it('adds up budget and spend for all projects in each category, sorted by name', async () => {
+      repo.getProjectsWithFinancialData.mockResolvedValue([
+        { id: ID, project_name: 'Bridge', ...inCategory('c2', 'Roads'), financial_data: [entry(300, 1000, null)] },
+        { id: OTHER_ID, project_name: 'School', ...inCategory('c1', 'Education'), financial_data: [entry(50, 500, 800)] },
+        { id: 'p3', project_name: 'Tunnel', ...inCategory('c2', 'Roads'), financial_data: [entry(null, 2000, null), entry(400, null, null)] },
+      ]);
+
+      await expect(projectService.getBudgetByCategory()).resolves.toEqual([
+        { category_id: 'c1', category_name: 'Education', budget: 800, spent: 50 },
+        { category_id: 'c2', category_name: 'Roads', budget: 3000, spent: 700 },
+      ]);
+    });
+
+    it('returns an empty list when there are no projects', async () => {
+      repo.getProjectsWithFinancialData.mockResolvedValue([]);
+
+      await expect(projectService.getBudgetByCategory()).resolves.toEqual([]);
+    });
+
+    it('wraps repository errors', async () => {
+      repo.getProjectsWithFinancialData.mockRejectedValue(new Error('timeout'));
+
+      await expect(projectService.getBudgetByCategory()).rejects.toThrow('Failed to fetch budget by category: Error: timeout');
+    });
+  });
+
+  describe('getProjectTrend', () => {
+    const dated = (year: number, month: number, ...amounts: [number | null, number | null, number | null]) => ({
+      year,
+      month,
+      ...entry(...amounts),
+    });
+
+    it('groups entries by month and by year, keeping date order', async () => {
+      repo.getProjectById.mockResolvedValue(buildProject({ project_name: 'Bridge' }));
+      repo.getProjectFinancialData.mockResolvedValue([
+        dated(2025, 12, 100, 500, null),
+        dated(2026, 1, 200, 1000, 1200),
+        dated(2026, 1, 50, null, null),
+        dated(2026, 3, 300, 1000, null),
+      ]);
+
+      await expect(projectService.getProjectTrend(ID)).resolves.toEqual({
+        project_id: ID,
+        project_name: 'Bridge',
+        monthly: [
+          { year: 2025, month: 12, budget: 500, spent: 100 },
+          { year: 2026, month: 1, budget: 1200, spent: 250 },
+          { year: 2026, month: 3, budget: 1000, spent: 300 },
+        ],
+        yearly: [
+          { year: 2025, budget: 500, spent: 100 },
+          { year: 2026, budget: 2200, spent: 550 },
+        ],
+      });
+      expect(repo.getProjectFinancialData).toHaveBeenCalledWith(ID);
+    });
+
+    it('returns empty series when the project has no financial data', async () => {
+      repo.getProjectById.mockResolvedValue(buildProject());
+      repo.getProjectFinancialData.mockResolvedValue([]);
+
+      await expect(projectService.getProjectTrend(ID)).resolves.toEqual(
+        expect.objectContaining({ monthly: [], yearly: [] }),
+      );
+    });
+
+    it('returns null when the project does not exist', async () => {
+      repo.getProjectById.mockResolvedValue(null);
+
+      await expect(projectService.getProjectTrend(ID)).resolves.toBeNull();
+      expect(repo.getProjectFinancialData).not.toHaveBeenCalled();
+    });
+
+    it('wraps repository errors', async () => {
+      repo.getProjectById.mockRejectedValue(new Error('timeout'));
+
+      await expect(projectService.getProjectTrend(ID)).rejects.toThrow('Failed to fetch project trend: Error: timeout');
     });
   });
 });

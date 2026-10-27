@@ -201,4 +201,56 @@ describe('project.controller', () => {
       expectResponse(res, 500, { error: 'boom' });
     });
   });
+
+  describe('getBudgetByCategory', () => {
+    it('responds 200 with the category totals', async () => {
+      const categories = [{ category_id: 'c1', category_name: 'Roads', budget: 100, spent: 50 }];
+      service.getBudgetByCategory.mockResolvedValue(categories);
+      const res = mockResponse();
+
+      await projectController.getBudgetByCategory(mockRequest(), res);
+
+      expectResponse(res, 200, categories);
+    });
+
+    it('responds 500 when the service throws', async () => {
+      service.getBudgetByCategory.mockRejectedValue(new Error('boom'));
+      const res = mockResponse();
+
+      await projectController.getBudgetByCategory(mockRequest(), res);
+
+      expectResponse(res, 500, { error: 'boom' });
+    });
+  });
+
+  describe('getProjectTrend', () => {
+    it('responds 200 with the trend for the path id', async () => {
+      const trend = { project_id: ID, project_name: 'Bridge', monthly: [], yearly: [] };
+      service.getProjectTrend.mockResolvedValue(trend);
+      const res = mockResponse();
+
+      await projectController.getProjectTrend(mockRequest({ params: { id: ID } }), res);
+
+      expect(service.getProjectTrend).toHaveBeenCalledWith(ID);
+      expectResponse(res, 200, trend);
+    });
+
+    it('responds 404 when the project does not exist', async () => {
+      service.getProjectTrend.mockResolvedValue(null);
+      const res = mockResponse();
+
+      await projectController.getProjectTrend(mockRequest({ params: { id: ID } }), res);
+
+      expectResponse(res, 404, { error: `Project with id ${ID} not found` });
+    });
+
+    it('responds 500 when the service throws', async () => {
+      service.getProjectTrend.mockRejectedValue(new Error('boom'));
+      const res = mockResponse();
+
+      await projectController.getProjectTrend(mockRequest({ params: { id: ID } }), res);
+
+      expectResponse(res, 500, { error: 'boom' });
+    });
+  });
 });

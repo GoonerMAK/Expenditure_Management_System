@@ -19,7 +19,7 @@ const ShowProjects = () => {
   const { data: projectsData, isLoading: projectsLoading } = useGetProjectsQuery({ offset, limit: ITEMS_PER_PAGE });
   const { data: users = [], isLoading: usersLoading } = useGetUsersQuery();
   // Financial data is edited through another API slice, so refetch whenever the dashboard opens
-  const { data: summary } = useGetBudgetSummaryQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: summary, isError: summaryError, refetch: refetchSummary } = useGetBudgetSummaryQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const projects = projectsData?.data || [];
   const totalItems = projectsData?.pagination.totalItems || 0;
@@ -47,7 +47,12 @@ const ShowProjects = () => {
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl">Projects</h1>
       </div>
-      {summary && <BudgetSummary summary={summary} />}
+      {summaryError ? (
+        <div role="alert" className="flex items-center gap-3 rounded-lg border border-destructive/50 p-4 text-sm text-destructive">
+          Couldn't load the budget summary.
+          <Button variant="outline" size="sm" onClick={() => refetchSummary()}>Try again</Button>
+        </div>
+      ) : summary && <BudgetSummary summary={summary} />}
       <form>
         <div className="relative">
           <Input

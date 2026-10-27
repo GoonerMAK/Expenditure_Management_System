@@ -85,3 +85,17 @@ export interface BudgetSummary {
     overall: BudgetTotals & { over_budget_count: number };
     projects: ProjectBudget[];
 }
+
+export interface CategoryBudget {
+    category_id: string;
+    category_name: string;
+    budget: number;
+    spent: number;
+}
+
+export interface ProjectTrend {
+    project_id: string;
+    project_name: string;
+    monthly: { year: number; month: number; budget: number; spent: number }[];
+    yearly: { year: number; budget: number; spent: number }[];
+}
