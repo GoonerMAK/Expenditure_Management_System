@@ -27,4 +27,4 @@ Tests never delete data. Every run adds new projects, categories and roles with 
 psql "$DATABASE_URL" -f db-snapshot.sql
 ```
 
-The snapshot includes one run against the code before [#4](https://github.com/GoonerMAK/Expenditure_Management_System/issues/4) was fixed. The unedited `E2E Owner Check 1793104614463` project, owned by `e2e_admin`, came from that run: a contributor was able to create it in the admin's name.
+The snapshot includes one run against the code from before server-side role checks were added. The unedited `E2E Owner Check 1793104614463` project, owned by `e2e_admin`, came from that run: a contributor was able to create it in the admin's name.
