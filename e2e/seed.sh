@@ -3,30 +3,38 @@
 set -euo pipefail
 
 API_URL="${API_URL:-http://localhost:4000/api}"
-DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/expenditure_management}"
-DATA="$(dirname "$0")/test-data.json"
-PASSWORD="$(node -p "require('$DATA').password")"
-CATEGORY="$(node -p "require('$DATA').category")"
+export DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/expenditure_management}"
+DIR="$(dirname "$0")"
+DATA="$DIR/test-data.json"
+JAR="$(mktemp)"
+trap 'rm -f "$JAR"' EXIT
 
-for key in admin contributor readOnly; do
-    email="$(node -p "require('$DATA').users.$key.email")"
-    username="$(node -p "require('$DATA').users.$key.username")"
-    role="$(node -p "require('$DATA').users.$key.role")"
+field() { node -p "require('$DATA').$1"; }
+PASSWORD="$(field password)"
 
-    # Sign up through the API so the password is hashed by the app
-    curl -s -o /dev/null -X POST "$API_URL/auth/signup" \
-        -H 'Content-Type: application/json' \
+ADMIN_EMAIL="$(field users.admin.email)" ADMIN_USERNAME="$(field users.admin.username)" ADMIN_PASSWORD="$PASSWORD" \
+    npm --prefix "$DIR/../server" run -s seed:admin
+
+curl -sf -c "$JAR" -o /dev/null -X POST "$API_URL/auth/login" \
+    -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$(field users.admin.email)\",\"password\":\"$PASSWORD\"}"
+
+api() { curl -s -b "$JAR" -H 'Content-Type: application/json' "$@"; }
+
+api -o /dev/null -X POST "$API_URL/roles" -d '{"role_name":"Contributor"}'
+
+for key in contributor readOnly; do
+    email="$(field "users.$key.email")"
+    username="$(field "users.$key.username")"
+    role="$(field "users.$key.role")"
+
+    api -o /dev/null -X POST "$API_URL/auth/signup" \
         -d "{\"email\":\"$email\",\"password\":\"$PASSWORD\",\"username\":\"$username\"}"
 
-    # New users are Read-only; set the role directly since the first admin has no one to promote them
-    psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 <<SQL
-INSERT INTO "Role" (id, role_name, updated_at) VALUES (gen_random_uuid(), '$role', now()) ON CONFLICT (role_name) DO NOTHING;
-UPDATE "User" SET role_name = '$role', role_id = (SELECT id FROM "Role" WHERE role_name = '$role') WHERE email = '$email';
-SQL
+    id="$(api "$API_URL/users/usernames" | node -p "JSON.parse(require('fs').readFileSync(0)).find((u) => u.username === '$username').id")"
+    api -sf -o /dev/null -X PUT "$API_URL/users/$id" -d "{\"data\":{\"role_name\":\"$role\"}}"
 done
 
-psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 <<SQL
-INSERT INTO "Category" (id, category_name, updated_at) VALUES (gen_random_uuid(), '$CATEGORY', now()) ON CONFLICT (category_name) DO NOTHING;
-SQL
+api -o /dev/null -X POST "$API_URL/categories" -d "{\"category_name\":\"$(field category)\"}"
 
 echo "Seeded e2e users and category"

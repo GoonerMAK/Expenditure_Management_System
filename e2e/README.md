@@ -13,7 +13,7 @@ Playwright tests that run against the real app (client, server and Postgres).
    npm test
    ```
 
-`npm run seed` creates one user per role from [test-data.json](test-data.json) (password in the same file) and a test category. It can be run more than once.
+`npm run seed` creates one user per role from [test-data.json](test-data.json) (password in the same file) and a test category. It can be run more than once. The admin is created with the server's `npm run seed:admin`; the other users and the category are set up through the API as that admin. On Windows, run it as `bash seed.sh`.
 
 Set `DATABASE_URL`, `API_URL` or `BASE_URL` if your setup differs from the defaults.
 

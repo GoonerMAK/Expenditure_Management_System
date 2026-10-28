@@ -11,7 +11,8 @@
     "test:unit:coverage": "jest tests/unit-tests --coverage",
     "test:integration": "jest tests/integration-tests --maxWorkers=1",
     "build": "tsc",
-    "dev": "node dist/index.js"
+    "dev": "node dist/index.js",
+    "seed:admin": "tsc && node dist/scripts/seed-admin.js"
   },
   "keywords": [],
   "author": "",
