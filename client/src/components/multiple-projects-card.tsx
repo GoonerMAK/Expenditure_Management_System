@@ -24,7 +24,7 @@ const ShowProjects = () => {
   const projects = projectsData?.data || [];
   const totalItems = projectsData?.pagination.totalItems || 0;
 
-  function formatDate(dateString: Date | undefined | null) {
+  function formatDate(dateString: string | Date | undefined | null) {
     if (!dateString) return 'Not specified';
   
     const options: Intl.DateTimeFormatOptions = { 

@@ -40,7 +40,7 @@ export const projectApi = createApi({
         method: 'put',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Project', id }],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Project', id }],
     }),
 
     getBudgetSummary: builder.query<BudgetSummary, void>({

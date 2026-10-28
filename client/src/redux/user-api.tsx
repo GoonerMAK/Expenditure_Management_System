@@ -47,13 +47,14 @@ export const userApi = createApi({
           : [{ type: 'Username', id: 'LIST' }],
     }),
 
-    updateUser: builder.mutation<User, { id: string; data: Partial<User> }>({
+    // The server reads the changes from a `data` field in the body
+    updateUser: builder.mutation<User, { id: string; data: { data: Partial<User> } }>({
       query: ({ id, data }) => ({
         url: `users/${id}`,
         method: 'put',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'User', id }],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'User', id }],
     }),
 
   }),

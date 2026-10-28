@@ -16,7 +16,7 @@ jest.mock('../src/pages/signup', () => ({ Signup: () => <p>Signup page</p> }));
 const mockedUseAuth = jest.mocked(useAuth);
 
 const visit = (path: string, role: string | null) => {
-  mockedUseAuth.mockReturnValue({ user: role ? { role_name: role } : null, loading: false });
+  mockedUseAuth.mockReturnValue({ user: role ? { id: 'u1', role_name: role } : null, loading: false });
   window.history.pushState({}, '', path);
   render(<App />);
 };

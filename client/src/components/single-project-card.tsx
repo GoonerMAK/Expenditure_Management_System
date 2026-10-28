@@ -79,7 +79,7 @@ const SingleProject = () => {
         }
     });
 
-    const { setValue, watch, getValues, reset } = form;
+    const { setValue, getValues, reset } = form;
 
 
     useEffect(() => {
@@ -155,7 +155,6 @@ const SingleProject = () => {
     }
 
 
-    const startDate = watch("start_date");
     const canEdit = user?.role_name !== "Read-only";
 
 
@@ -211,7 +210,7 @@ const SingleProject = () => {
                         <FormField
                             control={form.control}
                             name="category_name"
-                            render={({ field }) => (
+                            render={() => (
                                 <FormItem className=''>
                                     <FormLabel>Category Name</FormLabel>
                                     <Popover open={open} onOpenChange={setOpen}>

@@ -12,7 +12,6 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [user, setUser] = useState('');
   const navigate = useNavigate();
   const { user: authenticatedUser } = useAuth();
 
@@ -24,11 +23,11 @@ const Login = () => {
       const decodedToken = jwtDecode<JwtPayload>(response.data.token); 
 
       Cookies.set('jwt', response.data.token, { expires: new Date((decodedToken as {exp:number}).exp * 1000 )})
-      setUser(response.data.user);
 
       navigate('/dashboard');
-    } catch (error: any) {
-      setError(error.response?.data?.message || error.message);
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      setError(err.response?.data?.message || err.message || 'Login failed');
     }
   };
 

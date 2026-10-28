@@ -25,7 +25,7 @@ export function Signup() {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:4000/api/auth/signup', {
+      await axios.post('http://localhost:4000/api/auth/signup', {
         email,
         password,
         username
@@ -33,9 +33,10 @@ export function Signup() {
 
       toast.success('Account created successfully!');
       navigate('/login');
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      if (message) {
+        setError(message);
       } else {  
         setError('An error occurred. Please try again.');
       }
