@@ -21,7 +21,6 @@ export interface Project {
     description: string;
     category_id: string;
     category_name: string;
-    // Strings in API responses; forms may send Date objects
     start_date: string | Date;
     end_date: string | Date;
     created_by_id: string;

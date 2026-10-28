@@ -47,7 +47,6 @@ export const userApi = createApi({
           : [{ type: 'Username', id: 'LIST' }],
     }),
 
-    // The server reads the changes from a `data` field in the body
     updateUser: builder.mutation<User, { id: string; data: { data: Partial<User> } }>({
       query: ({ id, data }) => ({
         url: `users/${id}`,

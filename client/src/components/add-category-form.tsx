@@ -7,6 +7,7 @@ import {Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Table
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import { Toaster } from './ui/sonner';
+import { getServerMessage } from '../lib/utils';
 
 
 interface Category {
@@ -34,7 +35,7 @@ const AddCategoryForm = () => {
       refetch();
     } catch (error) {
       console.error('Error response:', error);
-      const errorMessage = (error as { data?: { message?: string } })?.data?.message || "Failed to create Category";
+      const errorMessage = getServerMessage(error) || "Failed to create Category";
       toast.error(`Error: ${errorMessage}`);
     }
   };

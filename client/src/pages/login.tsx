@@ -7,6 +7,7 @@ import axios from 'axios';
 import { jwtDecode, JwtPayload } from 'jwt-decode'; 
 import Cookies from 'js-cookie';
 import useAuth from '../lib/use-auth';
+import { getServerMessage } from '../lib/utils';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -26,8 +27,7 @@ const Login = () => {
 
       navigate('/dashboard');
     } catch (error) {
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
-      setError(err.response?.data?.message || err.message || 'Login failed');
+      setError(getServerMessage(error) || (error instanceof Error ? error.message : '') || 'Login failed');
     }
   };
 

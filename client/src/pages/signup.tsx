@@ -12,6 +12,7 @@ import {
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Toaster, toast } from 'sonner';
+import { getServerMessage } from '../lib/utils';
 
 export function Signup() {
   const [email, setEmail] = useState('');
@@ -34,12 +35,7 @@ export function Signup() {
       toast.success('Account created successfully!');
       navigate('/login');
     } catch (error) {
-      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
-      if (message) {
-        setError(message);
-      } else {  
-        setError('An error occurred. Please try again.');
-      }
+      setError(getServerMessage(error) || 'An error occurred. Please try again.');
     }
   };
 

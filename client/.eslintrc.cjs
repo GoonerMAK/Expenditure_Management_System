@@ -17,7 +17,6 @@ module.exports = {
   },
   overrides: [
     {
-      // Generated shadcn/ui files export style helpers (e.g. buttonVariants) next to components
       files: ['src/components/ui/**'],
       rules: { 'react-refresh/only-export-components': 'off' },
     },

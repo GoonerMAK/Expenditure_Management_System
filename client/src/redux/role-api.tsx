@@ -45,7 +45,6 @@ export const roleApi = createApi({
       invalidatesTags: (_result, _error, { id }) => [{ type: 'Role', id }],
     }),
 
-    // Each row is [role_name, ...usernames]
     getUsersByRoles: builder.query<RoleUsersRow[], void>({
         query: () => ({
           url: 'roles/users/by-role',
@@ -68,7 +67,6 @@ export const roleApi = createApi({
               : [{ type: 'Role', id: 'LIST' }],
     }),
 
-    // The server returns the user's role, or an empty list when they only have Read-only
     getAssignedRolesByUserId: builder.query<Role | Role[], string>({
         query: (id) => ({
             url: `roles/assigned/${id}`,
