@@ -4,10 +4,8 @@ import BudgetChart from '../components/budget-chart';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { formatMonth } from '../lib/utils';
 import { useGetBudgetByCategoryQuery, useGetBudgetSummaryQuery, useGetProjectTrendQuery } from '../redux/project-api';
-
-const monthLabel = (year: number, month: number) =>
-  new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 const Analytics = () => {
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -25,7 +23,7 @@ const Analytics = () => {
 
   const categoryData = categories.map(({ category_name, budget, spent }) => ({ label: category_name, budget, spent }));
   const trendData = period === 'monthly'
-    ? (trend?.monthly ?? []).map(({ year, month, budget, spent }) => ({ label: monthLabel(year, month), budget, spent }))
+    ? (trend?.monthly ?? []).map(({ year, month, budget, spent }) => ({ label: formatMonth(year, month), budget, spent }))
     : (trend?.yearly ?? []).map(({ year, budget, spent }) => ({ label: String(year), budget, spent }));
 
   return (

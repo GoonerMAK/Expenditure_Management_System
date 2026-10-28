@@ -8,7 +8,7 @@ import { useGetUsersQuery } from '../redux/user-api';
 import { useState } from 'react';
 import AppPagination from './pagination';
 import BudgetSummary from './budget-summary';
-import { formatAmount, formatPercent } from '../lib/utils';
+import { formatAmount, formatDate, formatPercent } from '../lib/utils';
 import { Badge } from './ui/badge';
 import ErrorState from './error-state';
 
@@ -24,19 +24,6 @@ const ShowProjects = () => {
 
   const projects = projectsData?.data || [];
   const totalItems = projectsData?.pagination.totalItems || 0;
-
-  function formatDate(dateString: string | Date | undefined | null) {
-    if (!dateString) return 'Not specified';
-  
-    const options: Intl.DateTimeFormatOptions = { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
-    };
-    const date = new Date(dateString);
-  
-    return date.toLocaleDateString('en-GB', options);
-  }
 
   if (projectsLoading || usersLoading) {
     return <div>Loading...</div>;

@@ -24,12 +24,12 @@ interface BudgetChartProps {
   horizontal?: boolean;
 }
 
-const SERIES = [
+const getChartSeries = () => [
   { key: 'budget', name: 'Budget', color: 'var(--chart-budget)' },
   { key: 'spent', name: 'Spent', color: 'var(--chart-spent)' },
 ] as const;
 
-const AXIS_TICK = { fill: 'hsl(var(--muted-foreground))', fontSize: 12 };
+const getAxisTick = () => ({ fill: 'hsl(var(--muted-foreground))', fontSize: 12 });
 
 const BudgetChart = ({ title, description, data, emptyMessage, isLoading, isError, onRetry, horizontal }: BudgetChartProps) => {
   const [showTable, setShowTable] = useState(false);
@@ -89,7 +89,7 @@ const BudgetChart = ({ title, description, data, emptyMessage, isLoading, isErro
                 <CartesianGrid vertical={!!horizontal} horizontal={!horizontal} stroke="hsl(var(--border))" />
                 {horizontal ? (
                   <>
-                    <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={formatAmount} tick={AXIS_TICK} />
+                    <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={formatAmount} tick={getAxisTick()} />
                     <YAxis
                       type="category"
                       dataKey="label"
@@ -97,13 +97,13 @@ const BudgetChart = ({ title, description, data, emptyMessage, isLoading, isErro
                       interval={0}
                       tickLine={false}
                       axisLine={{ stroke: 'hsl(var(--border))' }}
-                      tick={AXIS_TICK}
+                      tick={getAxisTick()}
                     />
                   </>
                 ) : (
                   <>
-                    <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tick={AXIS_TICK} />
-                    <YAxis tickLine={false} axisLine={false} width={64} tickFormatter={formatAmount} tick={AXIS_TICK} />
+                    <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tick={getAxisTick()} />
+                    <YAxis tickLine={false} axisLine={false} width={64} tickFormatter={formatAmount} tick={getAxisTick()} />
                   </>
                 )}
                 <Tooltip
@@ -123,7 +123,7 @@ const BudgetChart = ({ title, description, data, emptyMessage, isLoading, isErro
                   iconSize={8}
                   formatter={(value) => <span className="text-sm text-foreground">{value}</span>}
                 />
-                {SERIES.map(({ key, name, color }) => (
+                {getChartSeries().map(({ key, name, color }) => (
                   <Bar
                     key={key}
                     dataKey={key}
