@@ -1,12 +1,15 @@
 import jwt from 'jsonwebtoken';
 import { authorizeRoles, isAuthenticated } from '../../../src/middlewares/auth.middleware.js';
-import * as authRepository from '../../../src/repositories/auth.repository.js';
-import { buildUser, ID } from '../helpers/factories.js';
+import * as userRepository from '../../../src/repositories/user.repository.js';
+import { buildRole, buildUser, ID } from '../helpers/factories.js';
 import { expectResponse, mockNext, mockRequest, mockResponse } from '../helpers/express.js';
 
-jest.mock('../../../src/repositories/auth.repository.js');
+jest.mock('../../../src/repositories/user.repository.js');
 
-const repository = jest.mocked(authRepository);
+const repository = jest.mocked(userRepository);
+
+const withRole = (role_name: string, user_role_name = role_name) =>
+  ({ ...buildUser({ role_name: user_role_name }), role: buildRole({ role_name }) });
 
 const SECRET = 'unit-test-secret';
 
@@ -139,20 +142,20 @@ describe('auth.middleware authorizeRoles', () => {
   });
 
   it('looks up the logged-in user and calls next when their role is allowed', async () => {
-    repository.getUserById.mockResolvedValue(buildUser({ role_name: 'Contributor' }));
+    repository.getUserWithRole.mockResolvedValue(withRole('Contributor'));
     const res = mockResponse();
     const next = mockNext();
 
     await authorizeRoles('Contributor', 'Administrator')(mockRequest({ user: { id: ID } }), res, next);
 
-    expect(repository.getUserById).toHaveBeenCalledWith(ID);
+    expect(repository.getUserWithRole).toHaveBeenCalledWith(ID);
     expect(next).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledWith();
     expect(res.status).not.toHaveBeenCalled();
   });
 
   it('responds 403 when the user role is not allowed', async () => {
-    repository.getUserById.mockResolvedValue(buildUser({ role_name: 'Read-only' }));
+    repository.getUserWithRole.mockResolvedValue(withRole('Read-only'));
     const res = mockResponse();
     const next = mockNext();
 
@@ -163,7 +166,7 @@ describe('auth.middleware authorizeRoles', () => {
   });
 
   it('responds 403 when the user has no role', async () => {
-    repository.getUserById.mockResolvedValue(buildUser({ role_name: null }));
+    repository.getUserWithRole.mockResolvedValue({ ...buildUser({ role_name: null, role_id: null }), role: null });
     const res = mockResponse();
     const next = mockNext();
 
@@ -173,8 +176,30 @@ describe('auth.middleware authorizeRoles', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it('authorizes by the linked role, not the role name copied onto the user', async () => {
+    repository.getUserWithRole.mockResolvedValue(withRole('Read-only', 'Administrator'));
+    const res = mockResponse();
+    const next = mockNext();
+
+    await authorizeRoles('Administrator')(mockRequest({ user: { id: ID } }), res, next);
+
+    expectResponse(res, 403, { message: 'Access denied. Insufficient permissions.' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('allows a user whose copied role name is stale but whose linked role is allowed', async () => {
+    repository.getUserWithRole.mockResolvedValue(withRole('Administrator', 'Read-only'));
+    const res = mockResponse();
+    const next = mockNext();
+
+    await authorizeRoles('Administrator')(mockRequest({ user: { id: ID } }), res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
   it('responds 403 when the user no longer exists', async () => {
-    repository.getUserById.mockResolvedValue(null);
+    repository.getUserWithRole.mockResolvedValue(null);
     const res = mockResponse();
     const next = mockNext();
 
@@ -185,7 +210,7 @@ describe('auth.middleware authorizeRoles', () => {
   });
 
   it('responds 500 when the user lookup fails', async () => {
-    repository.getUserById.mockRejectedValue(new Error('db down'));
+    repository.getUserWithRole.mockRejectedValue(new Error('db down'));
     const res = mockResponse();
     const next = mockNext();
 

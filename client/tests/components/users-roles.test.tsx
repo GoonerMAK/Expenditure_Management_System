@@ -247,5 +247,16 @@ describe('UserRoles', () => {
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Error revoking role'));
     });
+
+    it('shows the server reason when revoking the last Administrator is refused', async () => {
+      const message = 'The last Administrator cannot be demoted or deleted.';
+      const { user } = setup({ updateUser: rejectingTrigger({ status: 409, data: { message } }) });
+      const form = section('Revoke Access');
+
+      await pick(user, form, 'select username', 'bob');
+      await user.click(within(form).getByRole('button', { name: 'Revoke' }));
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message));
+    });
   });
 });
