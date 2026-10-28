@@ -10,7 +10,7 @@ export interface FinancialData {
     month: number;
     expenditure: number;
     initial_budget: number;
-    revised_budget: number;
+    revised_budget: number | null;
     project_id?: string;
     project_name?: string;
 }

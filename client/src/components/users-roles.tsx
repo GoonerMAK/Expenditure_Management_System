@@ -8,7 +8,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, } from "./ui/command"
 import { Popover, PopoverContent, PopoverTrigger, } from "./ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react"
-import { cn } from '../lib/utils';
+import { cn, getServerMessage } from '../lib/utils';
 
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
@@ -176,7 +176,7 @@ const UserRoles = () => {
         window.location.reload(); 
       }, 2000);
     } catch (error) {
-      toast.error('Error assigning role');
+      toast.error(getServerMessage(error) || 'Error assigning role');
       console.error('Error response:', error);
     }
   };
@@ -205,7 +205,7 @@ const UserRoles = () => {
         window.location.reload(); 
       }, 3000);
     } catch (error) {
-      toast.error('Error revoking role');
+      toast.error(getServerMessage(error) || 'Error revoking role');
       console.error('Error response:', error);
     }
   };

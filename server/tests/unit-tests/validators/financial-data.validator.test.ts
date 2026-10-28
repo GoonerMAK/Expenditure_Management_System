@@ -80,6 +80,14 @@ describe('financial-data.validator financialDataSchema', () => {
     });
   });
 
+  it('accepts a null revised budget to mean the budget was not revised', () => {
+    expect(financialDataSchema.safeParse({ revised_budget: null }).success).toBe(true);
+  });
+
+  it.each(['expenditure', 'initial_budget'])('rejects a null %s', (field) => {
+    expect(issue({ [field]: null })?.path).toEqual([field]);
+  });
+
   describe('project reference', () => {
     it('rejects a non-UUID project_id', () => {
       expect(issue({ project_id: 'project-1' })?.path).toEqual(['project_id']);

@@ -9,6 +9,14 @@ export const createRole = async (role_name: string) => {
     });
 };
 
+export const upsertRole = async (role_name: string) => {
+    return await prisma.role.upsert({
+        where: { role_name },
+        update: {},
+        create: { role_name },
+    });
+};
+
 export const updateRole = async (
     id: string,
     role_name?: string

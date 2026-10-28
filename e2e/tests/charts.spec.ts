@@ -1,5 +1,5 @@
 import { test, expect, request } from '@playwright/test';
-import { API_URL, apiAs, createCategory, createProject, loginInUi, runId } from './helpers';
+import { API_URL, apiAs, createCategory, createProject, loginInUi, runId, selectTrendProject } from './helpers';
 
 // Expenditure and budget charts on the Analytics page; test data is kept for reference.
 
@@ -8,7 +8,7 @@ test.describe('chart data API', () => {
     const { api } = await apiAs('contributor');
     const category = await createCategory(api, 'E2E Chart');
     await createProject(api, category, `E2E Chart A ${runId()}`, [
-      { year: 2026, month: 1, expenditure: 400, initial_budget: 1000, revised_budget: 0 },
+      { year: 2026, month: 1, expenditure: 400, initial_budget: 1000, revised_budget: null },
     ]);
     await createProject(api, category, `E2E Chart B ${runId()}`, [
       { year: 2026, month: 2, expenditure: 900, initial_budget: 500, revised_budget: 800 },
@@ -24,13 +24,29 @@ test.describe('chart data API', () => {
     });
   });
 
+  test('category totals use the current category name after a rename', async () => {
+    const { api } = await apiAs('contributor');
+    const category = await createCategory(api, 'E2E Chart');
+    await createProject(api, category, `E2E Chart Rename ${runId()}`, [
+      { year: 2026, month: 1, expenditure: 10, initial_budget: 100, revised_budget: null },
+    ]);
+    const renamed = `E2E Renamed ${runId().slice(-7)}`;
+    expect((await api.put(`categories/${category.id}`, { data: { category_name: renamed } })).status()).toBe(200);
+
+    const categories = await (await api.get('projects/summary/categories')).json();
+
+    expect(categories.find((c: { category_id: string }) => c.category_id === category.id)).toEqual(
+      expect.objectContaining({ category_name: renamed }),
+    );
+  });
+
   test('project trend groups entries by month and by year', async () => {
     const { api } = await apiAs('contributor');
     const category = await createCategory(api, 'E2E Chart');
     const project = await createProject(api, category, `E2E Trend ${runId()}`, [
-      { year: 2025, month: 11, expenditure: 100, initial_budget: 600, revised_budget: 0 },
+      { year: 2025, month: 11, expenditure: 100, initial_budget: 600, revised_budget: null },
       { year: 2026, month: 1, expenditure: 250, initial_budget: 600, revised_budget: 700 },
-      { year: 2026, month: 2, expenditure: 800, initial_budget: 600, revised_budget: 0 },
+      { year: 2026, month: 2, expenditure: 800, initial_budget: 600, revised_budget: null },
     ]);
 
     const trend = await (await api.get(`projects/${project.id}/trend`)).json();
@@ -73,7 +89,7 @@ test.describe('Analytics page', () => {
     const { api } = await apiAs('contributor');
     const category = await createCategory(api, 'E2E Chart');
     await createProject(api, category, `E2E Chart UI ${runId()}`, [
-      { year: 2026, month: 4, expenditure: 1234, initial_budget: 5000, revised_budget: 0 },
+      { year: 2026, month: 4, expenditure: 1234, initial_budget: 5000, revised_budget: null },
     ]);
 
     await loginInUi(page, 'readOnly');
@@ -109,13 +125,13 @@ test.describe('Analytics page', () => {
     const category = await createCategory(api, 'E2E Chart');
     const name = `E2E Trend UI ${runId()}`;
     await createProject(api, category, name, [
-      { year: 2025, month: 12, expenditure: 300, initial_budget: 1000, revised_budget: 0 },
-      { year: 2026, month: 5, expenditure: 1500, initial_budget: 1000, revised_budget: 0 },
+      { year: 2025, month: 12, expenditure: 300, initial_budget: 1000, revised_budget: null },
+      { year: 2026, month: 5, expenditure: 1500, initial_budget: 1000, revised_budget: null },
     ]);
 
     await loginInUi(page, 'readOnly');
     await page.goto('/analytics');
-    await page.getByLabel('Project').selectOption({ label: name });
+    await selectTrendProject(page, name);
 
     const card = page.locator('.rounded-lg', { has: page.getByText('Monthly budget vs spent') }).first();
     await expect(card).toContainText(name);
@@ -149,6 +165,38 @@ test.describe('Analytics page', () => {
     await card.getByRole('button', { name: 'Try again' }).click();
     await expect(card.getByRole('alert')).toHaveCount(0);
     await expect(card.getByRole('img', { name: /Spending by category/ })).toBeVisible();
+  });
+
+  test('switching project shows loading, not the previous project trend', async ({ page }) => {
+    const { api } = await apiAs('contributor');
+    const category = await createCategory(api, 'E2E Chart');
+    const first = `E2E Switch A ${runId()}`;
+    const second = `E2E Switch B ${runId()}`;
+    await createProject(api, category, first, [{ year: 2026, month: 1, expenditure: 10, initial_budget: 100, revised_budget: null }]);
+    const slow = await createProject(api, category, second, [
+      { year: 2026, month: 2, expenditure: 20, initial_budget: 200, revised_budget: null },
+    ]);
+
+    await loginInUi(page, 'readOnly');
+    await page.goto('/analytics');
+    await selectTrendProject(page, first);
+    const card = page.locator('.rounded-lg', { has: page.getByText('Monthly budget vs spent') }).first();
+    await expect(card).toContainText(first);
+
+    let release = () => {};
+    const released = new Promise<void>((resolve) => (release = resolve));
+    await page.route(`**/api/projects/${slow.id}/trend`, async (route) => {
+      await released;
+      await route.continue();
+    });
+    await selectTrendProject(page, second);
+
+    await expect(page.getByLabel('Project')).toContainText(second);
+    await expect(card).toContainText('Loading...');
+    await expect(card).not.toContainText(first);
+
+    release();
+    await expect(card).toContainText(second);
   });
 
   test('a failed trend request shows an error on that chart only', async ({ page }) => {

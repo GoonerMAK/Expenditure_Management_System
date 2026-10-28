@@ -243,7 +243,7 @@ describe('project.service', () => {
     revised_budget,
   });
 
-  const inCategory = (category_id: string, category_name: string) => ({ category_id, category_name });
+  const inCategory = (category_id: string, category_name: string) => ({ category_id, category: { category_name } });
 
   describe('getBudgetSummary', () => {
     it('totals each project, preferring the revised budget over the initial one', async () => {
@@ -283,6 +283,16 @@ describe('project.service', () => {
         over_budget: false,
         over_budget_count: 1,
       });
+    });
+
+    it('treats a revised budget of zero as a cut to zero, not as missing', async () => {
+      repo.getProjectsWithFinancialData.mockResolvedValue([
+        { id: ID, project_name: 'Cut', ...inCategory('c1', 'Roads'), financial_data: [entry(100, 5000, 0)] },
+      ]);
+
+      const summary = await projectService.getBudgetSummary();
+
+      expect(summary.projects[0]).toEqual(expect.objectContaining({ budget: 0, spent: 100, remaining: -100, over_budget: true }));
     });
 
     it('treats missing amounts as zero and leaves percent empty when there is no budget', async () => {

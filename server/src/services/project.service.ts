@@ -111,7 +111,7 @@ type FinancialEntry = {
 
 // A revised budget replaces the initial one for that entry
 const sumBudget = (entries: FinancialEntry[]) =>
-    entries.reduce((sum, entry) => sum + (entry.revised_budget || entry.initial_budget || 0), 0);
+    entries.reduce((sum, entry) => sum + (entry.revised_budget ?? entry.initial_budget ?? 0), 0);
 
 const sumSpent = (entries: FinancialEntry[]) =>
     entries.reduce((sum, entry) => sum + (entry.expenditure || 0), 0);
@@ -123,6 +123,25 @@ const toBudgetTotals = (budget: number, spent: number) => ({
     percent_used: budget > 0 ? Math.round((spent / budget) * 1000) / 10 : null,
     over_budget: spent > budget,
 });
+
+const toTrendPoint = (entries: FinancialEntry[]) => ({
+    budget: sumBudget(entries),
+    spent: sumSpent(entries),
+});
+
+const groupEntriesByPeriod = <T extends FinancialEntry>(entries: T[], periodOf: (entry: T) => string) => {
+    const groups = new Map<string, T[]>();
+    for (const entry of entries) {
+        const period = periodOf(entry);
+        const group = groups.get(period);
+        if (group) {
+            group.push(entry);
+        } else {
+            groups.set(period, [entry]);
+        }
+    }
+    return [...groups.values()];
+};
 
 export const getBudgetSummary = async () => {
     try {
@@ -157,7 +176,7 @@ export const getBudgetByCategory = async () => {
 
         for (const project of projects) {
             const category = categories.get(project.category_id)
-                ?? { category_id: project.category_id, category_name: project.category_name, budget: 0, spent: 0 };
+                ?? { category_id: project.category_id, category_name: project.category.category_name, budget: 0, spent: 0 };
             category.budget += sumBudget(project.financial_data);
             category.spent += sumSpent(project.financial_data);
             categories.set(project.category_id, category);
@@ -177,25 +196,16 @@ export const getProjectTrend = async (id: string) => {
         }
 
         const entries = await projectRepository.getProjectFinancialData(id);
-        const group = <K extends string>(keyOf: (entry: typeof entries[number]) => K) => {
-            const groups = new Map<K, typeof entries>();
-            for (const entry of entries) {
-                groups.set(keyOf(entry), [...(groups.get(keyOf(entry)) ?? []), entry]);
-            }
-            return [...groups.values()];
-        };
 
         // Entries come sorted by year and month, so the groups keep that order
-        const monthly = group((entry) => `${entry.year}-${entry.month}`).map((items) => ({
+        const monthly = groupEntriesByPeriod(entries, (entry) => `${entry.year}-${entry.month}`).map((items) => ({
             year: items[0].year,
             month: items[0].month,
-            budget: sumBudget(items),
-            spent: sumSpent(items),
+            ...toTrendPoint(items),
         }));
-        const yearly = group((entry) => `${entry.year}`).map((items) => ({
+        const yearly = groupEntriesByPeriod(entries, (entry) => `${entry.year}`).map((items) => ({
             year: items[0].year,
-            budget: sumBudget(items),
-            spent: sumSpent(items),
+            ...toTrendPoint(items),
         }));
 
         return { project_id: project.id, project_name: project.project_name, monthly, yearly };

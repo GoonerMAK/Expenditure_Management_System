@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { apiAs, createProject, getCategory, loginInUi, runId, type FinancialEntry } from './helpers';
+import { apiAs, createProject, getCategory, loginInUi, openLastProjectsPage, runId, type FinancialEntry } from './helpers';
 
 // Budget vs actual summary on the dashboard; test data is kept for reference.
 
@@ -32,6 +32,20 @@ test.describe('budget summary', () => {
     });
   });
 
+  test('API treats a revised budget of 0 as a cut to zero', async () => {
+    const { api } = await apiAs('contributor');
+    const project = await createProjectWithSpend(api, `E2E Budget Cut ${runId()}`, {
+      expenditure: 100,
+      initial_budget: 5000,
+      revised_budget: 0,
+    });
+
+    const summary = await (await api.get('projects/summary')).json();
+    const totals = summary.projects.find((p: { project_id: string }) => p.project_id === project.id);
+
+    expect(totals).toEqual(expect.objectContaining({ budget: 0, spent: 100, remaining: -100, over_budget: true }));
+  });
+
   test('Read-only users can see the summary', async () => {
     const { api } = await apiAs('readOnly');
 
@@ -45,9 +59,8 @@ test.describe('budget summary', () => {
   test('dashboard shows overall totals and marks an over-budget project', async ({ page }) => {
     const { api } = await apiAs('contributor');
     const name = `E2E Budget Over ${runId()}`;
-    await createProjectWithSpend(api, name, { expenditure: 1500, initial_budget: 1000, revised_budget: 0 });
+    await createProjectWithSpend(api, name, { expenditure: 1500, initial_budget: 1000, revised_budget: null });
     const { overall } = await (await api.get('projects/summary')).json();
-    const { pagination } = await (await api.get('projects?offset=0&limit=6')).json();
 
     await loginInUi(page, 'readOnly');
 
@@ -56,10 +69,7 @@ test.describe('budget summary', () => {
     await expect(section).toContainText(overall.spent.toLocaleString('en-US', { maximumFractionDigits: 2 }));
     await expect(section).toContainText(`${overall.over_budget_count} project`);
 
-    // Projects are listed oldest first, so the new one is on the last page
-    if (pagination.totalPages > 1) {
-      await page.getByRole('link', { name: String(pagination.totalPages), exact: true }).click();
-    }
+    await openLastProjectsPage(page, api);
     const card = page.locator('.p-6', { has: page.getByRole('heading', { name }) });
     await expect(card.getByText('Over budget')).toBeVisible();
     await expect(card).toContainText('Spent 1,500 of 1,000 (150%)');

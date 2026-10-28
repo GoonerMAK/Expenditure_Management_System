@@ -1,4 +1,4 @@
-import { cn, formatAmount, formatPercent, getServerMessage } from '../../src/lib/utils';
+import { cn, formatAmount, formatDate, formatMonth, formatPercent, getServerMessage, toOptionalAmount } from '../../src/lib/utils';
 
 describe('cn', () => {
   it('joins class names', () => {
@@ -62,5 +62,42 @@ describe('getServerMessage', () => {
   it('returns undefined when there is no server message', () => {
     expect(getServerMessage(new Error('Network Error'))).toBeUndefined();
     expect(getServerMessage(null)).toBeUndefined();
+  });
+});
+
+describe('formatDate', () => {
+  it('formats a date string as day, month and year', () => {
+    expect(formatDate('2026-02-01T00:00:00.000Z')).toBe('1 February 2026');
+  });
+
+  it('formats a Date object', () => {
+    expect(formatDate(new Date(2025, 11, 31))).toBe('31 December 2025');
+  });
+
+  it.each([undefined, null, ''])('says "Not specified" for %p', (value) => {
+    expect(formatDate(value)).toBe('Not specified');
+  });
+});
+
+describe('formatMonth', () => {
+  it('formats a year and month as a short label', () => {
+    expect(formatMonth(2026, 3)).toBe('Mar 2026');
+    expect(formatMonth(2025, 12)).toBe('Dec 2025');
+  });
+});
+
+describe('toOptionalAmount', () => {
+  it.each(['', null, undefined])('returns null for the blank value %p', (value) => {
+    expect(toOptionalAmount(value)).toBeNull();
+  });
+
+  it('keeps zero as a real amount', () => {
+    expect(toOptionalAmount(0)).toBe(0);
+    expect(toOptionalAmount('0')).toBe(0);
+  });
+
+  it('parses numbers and numeric strings', () => {
+    expect(toOptionalAmount('1500.5')).toBe(1500.5);
+    expect(toOptionalAmount(800)).toBe(800);
   });
 });
