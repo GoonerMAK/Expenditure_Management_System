@@ -33,6 +33,11 @@ export const getCategory = async (api: APIRequestContext) => {
 
 export type FinancialEntry = { year: number; month: number; expenditure: number; initial_budget: number; revised_budget: number | null };
 
+export const selectTrendProject = async (page: Page, name: string) => {
+  await page.getByLabel('Project').click();
+  await page.getByRole('option', { name, exact: true }).click();
+};
+
 export const createCategory = async (api: APIRequestContext, prefix: string) => {
   // Category names are limited to 20 characters
   const res = await api.post('categories', { data: { category_name: `${prefix} ${runId().slice(-8)}` } });

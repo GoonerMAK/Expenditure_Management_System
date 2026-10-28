@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PageLayout from '../components/page-layout';
 import BudgetChart from '../components/budget-chart';
 import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useGetBudgetByCategoryQuery, useGetBudgetSummaryQuery, useGetProjectTrendQuery } from '../redux/project-api';
 
@@ -20,7 +21,7 @@ const Analytics = () => {
   const projects = summaryQuery.data?.projects ?? [];
   const projectId = selectedProjectId || projects[0]?.project_id || '';
   const trendQuery = useGetProjectTrendQuery(projectId, { skip: !projectId, refetchOnMountOrArgChange: true });
-  const trend = trendQuery.data;
+  const trend = trendQuery.currentData;
 
   const categoryData = categories.map(({ category_name, budget, spent }) => ({ label: category_name, budget, spent }));
   const trendData = period === 'monthly'
@@ -56,17 +57,16 @@ const Analytics = () => {
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="trend-project">Project</Label>
-                <select
-                  id="trend-project"
-                  value={projectId}
-                  onChange={(e) => setSelectedProjectId(e.target.value)}
-                  disabled={projects.length === 0}
-                  className="h-10 w-64 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  {projects.map((project) => (
-                    <option key={project.project_id} value={project.project_id}>{project.project_name}</option>
-                  ))}
-                </select>
+                <Select value={projectId} onValueChange={setSelectedProjectId} disabled={projects.length === 0}>
+                  <SelectTrigger id="trend-project" className="w-64">
+                    <SelectValue placeholder="No projects" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project) => (
+                      <SelectItem key={project.project_id} value={project.project_id}>{project.project_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Tabs value={period} onValueChange={(value) => setPeriod(value as 'monthly' | 'yearly')}>
                 <TabsList>
@@ -81,7 +81,7 @@ const Analytics = () => {
               description={trend?.project_name}
               data={trendData}
               emptyMessage={projects.length === 0 ? 'No projects yet.' : 'No financial data for this project yet.'}
-              isLoading={summaryQuery.isLoading || trendQuery.isLoading}
+              isLoading={summaryQuery.isLoading || (trendQuery.isFetching && !trend)}
               isError={trendQuery.isError}
               onRetry={trendQuery.refetch}
             />

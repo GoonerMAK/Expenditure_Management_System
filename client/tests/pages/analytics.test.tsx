@@ -50,7 +50,7 @@ describe('Analytics page', () => {
       queryResult({ data: [{ category_id: 'c1', category_name: 'Roads', budget: 3000, spent: 700 }] }),
     );
     mockedSummary.mockReturnValue(queryResult({ data: summary }));
-    mockedTrend.mockReturnValue(queryResult({ data: trend }));
+    mockedTrend.mockReturnValue(queryResult({ data: trend, currentData: trend }));
   });
 
   it('refetches all data each time the page opens', () => {
@@ -74,7 +74,7 @@ describe('Analytics page', () => {
     render(<Analytics />);
 
     expect(mockedTrend).toHaveBeenLastCalledWith('p1', { skip: false, refetchOnMountOrArgChange: true });
-    expect(screen.getByLabelText('Project')).toHaveValue('p1');
+    expect(screen.getByLabelText('Project')).toHaveTextContent('Bridge');
     const card = chartCard('Monthly budget vs spent');
     await userEvent.setup().click(card.querySelector('button') as HTMLElement);
     expect(screen.getByRole('table')).toHaveTextContent('Dec 2025500100');
@@ -94,7 +94,11 @@ describe('Analytics page', () => {
   it('loads the trend for the chosen project', async () => {
     render(<Analytics />);
 
-    await userEvent.setup().selectOptions(screen.getByLabelText('Project'), 'p2');
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText('Project'));
+    await user.click(screen.getByRole('option', { name: 'School' }));
+
+    expect(screen.getByLabelText('Project')).toHaveTextContent('School');
 
     expect(mockedTrend).toHaveBeenLastCalledWith('p2', { skip: false, refetchOnMountOrArgChange: true });
   });
@@ -111,11 +115,31 @@ describe('Analytics page', () => {
   });
 
   it('says when the chosen project has no financial data', () => {
-    mockedTrend.mockReturnValue(queryResult({ data: { ...trend, monthly: [], yearly: [] } }));
+    mockedTrend.mockReturnValue(queryResult({ currentData: { ...trend, monthly: [], yearly: [] } }));
 
     render(<Analytics />);
 
     expect(screen.getByText('No financial data for this project yet.')).toBeInTheDocument();
+  });
+
+  it('shows loading instead of the previous project trend while the chosen project loads', () => {
+    mockedTrend.mockReturnValue(queryResult({ data: trend, currentData: undefined, isFetching: true }));
+
+    render(<Analytics />);
+
+    const card = chartCard('Monthly budget vs spent');
+    expect(card).toHaveTextContent('Loading...');
+    expect(card).not.toHaveTextContent('Bridge');
+  });
+
+  it('keeps showing the trend while the same project refetches', () => {
+    mockedTrend.mockReturnValue(queryResult({ data: trend, currentData: trend, isFetching: true }));
+
+    render(<Analytics />);
+
+    const card = chartCard('Monthly budget vs spent');
+    expect(card).toHaveTextContent('Bridge');
+    expect(card).not.toHaveTextContent('Loading...');
   });
 
   it('shows loading states while data loads', () => {

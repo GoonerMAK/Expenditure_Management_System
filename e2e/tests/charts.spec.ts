@@ -1,5 +1,5 @@
 import { test, expect, request } from '@playwright/test';
-import { API_URL, apiAs, createCategory, createProject, loginInUi, runId } from './helpers';
+import { API_URL, apiAs, createCategory, createProject, loginInUi, runId, selectTrendProject } from './helpers';
 
 // Expenditure and budget charts on the Analytics page; test data is kept for reference.
 
@@ -115,7 +115,7 @@ test.describe('Analytics page', () => {
 
     await loginInUi(page, 'readOnly');
     await page.goto('/analytics');
-    await page.getByLabel('Project').selectOption({ label: name });
+    await selectTrendProject(page, name);
 
     const card = page.locator('.rounded-lg', { has: page.getByText('Monthly budget vs spent') }).first();
     await expect(card).toContainText(name);
