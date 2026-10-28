@@ -1,40 +1,13 @@
-import { test, expect, request, type APIRequestContext } from '@playwright/test';
-import { API_URL, apiAs, loginInUi, runId } from './helpers';
+import { test, expect, request } from '@playwright/test';
+import { API_URL, apiAs, createCategory, createProject, loginInUi, runId } from './helpers';
 
 // Covers issue #6: expenditure and budget charts on the Analytics page.
 // Data created here is kept on purpose for future reference.
 
-type Amounts = { year: number; month: number; expenditure: number; initial_budget: number; revised_budget: number };
-
-const createCategory = async (api: APIRequestContext) => {
-  // Category names are limited to 20 characters
-  const res = await api.post('categories', { data: { category_name: `E2E Chart ${runId().slice(-8)}` } });
-  expect(res.status()).toBe(201);
-  return res.json();
-};
-
-const createProject = async (
-  api: APIRequestContext,
-  category: { id: string; category_name: string },
-  name: string,
-  entries: Amounts[],
-) => {
-  const res = await api.post('projects', {
-    data: { project_name: name, category_id: category.id, category_name: category.category_name },
-  });
-  expect(res.status()).toBe(201);
-  const project = await res.json();
-  for (const entry of entries) {
-    const financial = await api.post('financialData', { data: { ...entry, project_id: project.id, project_name: name } });
-    expect(financial.status()).toBe(201);
-  }
-  return project;
-};
-
 test.describe('chart data API', () => {
   test('category totals add up every project in the category', async () => {
     const { api } = await apiAs('contributor');
-    const category = await createCategory(api);
+    const category = await createCategory(api, 'E2E Chart');
     await createProject(api, category, `E2E Chart A ${runId()}`, [
       { year: 2026, month: 1, expenditure: 400, initial_budget: 1000, revised_budget: 0 },
     ]);
@@ -54,7 +27,7 @@ test.describe('chart data API', () => {
 
   test('project trend groups entries by month and by year', async () => {
     const { api } = await apiAs('contributor');
-    const category = await createCategory(api);
+    const category = await createCategory(api, 'E2E Chart');
     const project = await createProject(api, category, `E2E Trend ${runId()}`, [
       { year: 2025, month: 11, expenditure: 100, initial_budget: 600, revised_budget: 0 },
       { year: 2026, month: 1, expenditure: 250, initial_budget: 600, revised_budget: 700 },
@@ -99,7 +72,7 @@ test.describe('chart data API', () => {
 test.describe('Analytics page', () => {
   test('Read-only user sees category spending, with tooltip and table view', async ({ page }) => {
     const { api } = await apiAs('contributor');
-    const category = await createCategory(api);
+    const category = await createCategory(api, 'E2E Chart');
     await createProject(api, category, `E2E Chart UI ${runId()}`, [
       { year: 2026, month: 4, expenditure: 1234, initial_budget: 5000, revised_budget: 0 },
     ]);
@@ -134,7 +107,7 @@ test.describe('Analytics page', () => {
 
   test('project trend switches between monthly and yearly', async ({ page }) => {
     const { api } = await apiAs('contributor');
-    const category = await createCategory(api);
+    const category = await createCategory(api, 'E2E Chart');
     const name = `E2E Trend UI ${runId()}`;
     await createProject(api, category, name, [
       { year: 2025, month: 12, expenditure: 300, initial_budget: 1000, revised_budget: 0 },

@@ -10,6 +10,7 @@ import AppPagination from './pagination';
 import BudgetSummary from './budget-summary';
 import { formatAmount, formatPercent } from '../lib/utils';
 import { Badge } from './ui/badge';
+import ErrorState from './error-state';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -48,10 +49,7 @@ const ShowProjects = () => {
         <h1 className="text-lg font-semibold md:text-2xl">Projects</h1>
       </div>
       {summaryError ? (
-        <div role="alert" className="flex items-center gap-3 rounded-lg border border-destructive/50 p-4 text-sm text-destructive">
-          Couldn't load the budget summary.
-          <Button variant="outline" size="sm" onClick={() => refetchSummary()}>Try again</Button>
-        </div>
+        <ErrorState message="Couldn't load the budget summary." onRetry={refetchSummary} className="rounded-lg border border-destructive/50 p-4" />
       ) : summary && <BudgetSummary summary={summary} />}
       <form>
         <div className="relative">

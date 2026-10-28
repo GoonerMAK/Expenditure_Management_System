@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from './ui/button';
+import ErrorState from './error-state';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { formatAmount } from '../lib/utils';
@@ -51,10 +52,7 @@ const BudgetChart = ({ title, description, data, emptyMessage, isLoading, isErro
         {isLoading ? (
           <p className="py-12 text-center text-sm text-muted-foreground">Loading...</p>
         ) : isError ? (
-          <div role="alert" className="flex flex-col items-center gap-3 py-12 text-center">
-            <p className="text-sm text-destructive">Couldn't load this chart. Please try again.</p>
-            {onRetry && <Button variant="outline" size="sm" onClick={onRetry}>Try again</Button>}
-          </div>
+          <ErrorState message="Couldn't load this chart. Please try again." onRetry={onRetry} className="flex-col py-12 text-center" />
         ) : data.length === 0 ? (
           <p className="py-12 text-center text-sm text-muted-foreground">{emptyMessage}</p>
         ) : showTable ? (
