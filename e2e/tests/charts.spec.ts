@@ -1,8 +1,7 @@
 import { test, expect, request } from '@playwright/test';
 import { API_URL, apiAs, createCategory, createProject, loginInUi, runId } from './helpers';
 
-// Covers issue #6: expenditure and budget charts on the Analytics page.
-// Data created here is kept on purpose for future reference.
+// Expenditure and budget charts on the Analytics page; test data is kept for reference.
 
 test.describe('chart data API', () => {
   test('category totals add up every project in the category', async () => {

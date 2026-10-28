@@ -1,8 +1,7 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { apiAs, createProject, getCategory, loginInUi, runId, type FinancialEntry } from './helpers';
 
-// Covers issue #5: budget vs actual summary on the dashboard.
-// Data created here is kept on purpose for future reference.
+// Budget vs actual summary on the dashboard; test data is kept for reference.
 
 const createProjectWithSpend = async (
   api: APIRequestContext,

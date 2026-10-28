@@ -1,8 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { apiAs, data, getCategory, loginInUi, runId } from './helpers';
 
-// Covers issue #4: role permissions are enforced on the server, not only in the UI.
-// Data created here is kept on purpose for future reference.
+// Role permissions enforced on the server, not only in the UI; test data is kept for reference.
 
 test.describe('API role permissions', () => {
   test('Read-only can read but not write', async () => {
