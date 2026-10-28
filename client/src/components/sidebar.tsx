@@ -1,5 +1,4 @@
 import {
-  Bell,
   Home,
   Blocks,
   Wallet,
@@ -8,7 +7,6 @@ import {
   LineChart,
   Package2,
 } from 'lucide-react';
-import { Button } from './ui/button';
 import useAuth from '../lib/use-auth';
 
 
@@ -16,7 +14,6 @@ const Sidebar = () => {
   const { user } = useAuth();
 
   const contributor = user?.role_name == "Contributor"; 
-  const readOnly = user?.role_name == "Read-only"; 
   const admin = user?.role_name == "Administrator";
 
   return (

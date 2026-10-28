@@ -21,11 +21,11 @@ export interface Project {
     description: string;
     category_id: string;
     category_name: string;
-    start_date: Date;
-    end_date: Date;
+    start_date: string | Date;
+    end_date: string | Date;
     created_by_id: string;
-    created_at: Date;
-    updated_at: Date;
+    created_at: string | Date;
+    updated_at: string | Date;
 }
 
 export interface User {

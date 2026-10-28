@@ -61,7 +61,7 @@ const setup = ({
   updateProject = resolvingTrigger({}),
   updateFinancial = resolvingTrigger({}),
 }: SetupOptions = {}) => {
-  mockedUseAuth.mockReturnValue({ user: { role_name: role }, loading: false });
+  mockedUseAuth.mockReturnValue({ user: { id: 'u1', role_name: role }, loading: false });
   mockedGetProject.mockReturnValue(queryResult(projectQuery));
   mockedGetFinancial.mockReturnValue(queryResult(financialQuery));
   mockedGetCategories.mockReturnValue(queryResult({ data: [{ id: 'c1', category_name: 'Infrastructure' }] }));

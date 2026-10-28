@@ -1,5 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { Role, RoleWithUsers } from "../components/interfaces";
+import { Role } from "../components/interfaces";
+
+type RoleUsersRow = [string, ...string[]];
 
 export const roleApi = createApi({
   reducerPath: "roleApi",
@@ -40,20 +42,17 @@ export const roleApi = createApi({
         method: 'put',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Role', id }],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Role', id }],
     }),
 
-    getUsersByRoles: builder.query<RoleWithUsers[], void>({
+    getUsersByRoles: builder.query<RoleUsersRow[], void>({
         query: () => ({
           url: 'roles/users/by-role',
           method: 'get',
-          transformResponse: (response: [string, ...string[]][]) => {
-            return response.map(([role_name, ...users]) => ({ role_name, users }));
-          },
         }),
         providesTags: (result) =>
           result
-            ? [...result.map(({ role_name }) => ({ type: 'RoleWithUsers', id: role_name } as const)), { type: 'RoleWithUsers', id: 'LIST' }]
+            ? [...result.map(([role_name]) => ({ type: 'RoleWithUsers', id: role_name } as const)), { type: 'RoleWithUsers', id: 'LIST' }]
             : [{ type: 'RoleWithUsers', id: 'LIST' }],
     }),
 
@@ -68,13 +67,13 @@ export const roleApi = createApi({
               : [{ type: 'Role', id: 'LIST' }],
     }),
 
-    getAssignedRolesByUserId: builder.query<Role[], string>({
+    getAssignedRolesByUserId: builder.query<Role | Role[], string>({
         query: (id) => ({
             url: `roles/assigned/${id}`,
             method: 'get',
           }),
           providesTags: (result) =>
-            result 
+            result && !Array.isArray(result)
                 ? [{ type: 'Role', id: result.id }, { type: 'Role', id: 'LIST' }]
                 : [{ type: 'Role', id: 'LIST' }],
     }),

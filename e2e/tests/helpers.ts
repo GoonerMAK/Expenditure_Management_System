@@ -30,3 +30,30 @@ export const getCategory = async (api: APIRequestContext) => {
   const categories = await (await api.get('categories')).json();
   return categories.find((c: { category_name: string }) => c.category_name === data.category);
 };
+
+export type FinancialEntry = { year: number; month: number; expenditure: number; initial_budget: number; revised_budget: number };
+
+export const createCategory = async (api: APIRequestContext, prefix: string) => {
+  // Category names are limited to 20 characters
+  const res = await api.post('categories', { data: { category_name: `${prefix} ${runId().slice(-8)}` } });
+  expect(res.status()).toBe(201);
+  return res.json();
+};
+
+export const createProject = async (
+  api: APIRequestContext,
+  category: { id: string; category_name: string },
+  name: string,
+  entries: FinancialEntry[],
+) => {
+  const res = await api.post('projects', {
+    data: { project_name: name, category_id: category.id, category_name: category.category_name },
+  });
+  expect(res.status()).toBe(201);
+  const project = await res.json();
+  for (const entry of entries) {
+    const financial = await api.post('financialData', { data: { ...entry, project_id: project.id, project_name: name } });
+    expect(financial.status()).toBe(201);
+  }
+  return project;
+};

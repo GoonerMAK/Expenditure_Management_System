@@ -3,10 +3,11 @@ import { useGetCategoriesQuery, useAddCategoryMutation } from '../redux/category
 
 import { Button } from "../components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "../components/ui/form";
-import {Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow, } from "../components/ui/table";
+import {Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow, } from "../components/ui/table";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import { Toaster } from './ui/sonner';
+import { getServerMessage } from '../lib/utils';
 
 
 interface Category {
@@ -32,9 +33,9 @@ const AddCategoryForm = () => {
       console.log('Server response:', response);
       toast.success('Successfully created Category');
       refetch();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error response:', error);
-      const errorMessage = error?.data?.message || "Failed to create Category";
+      const errorMessage = getServerMessage(error) || "Failed to create Category";
       toast.error(`Error: ${errorMessage}`);
     }
   };

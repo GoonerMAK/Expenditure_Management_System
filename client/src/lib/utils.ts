@@ -10,3 +10,8 @@ export const formatAmount = (amount: number) =>
 
 export const formatPercent = (percent: number | null) =>
   percent === null ? 'N/A' : `${percent}%`
+
+export const getServerMessage = (error: unknown): string | undefined => {
+  const err = error as { response?: { data?: { message?: string } }; data?: { message?: string } } | null
+  return err?.response?.data?.message ?? err?.data?.message
+}

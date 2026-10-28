@@ -12,6 +12,7 @@ import {
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Toaster, toast } from 'sonner';
+import { getServerMessage } from '../lib/utils';
 
 export function Signup() {
   const [email, setEmail] = useState('');
@@ -25,7 +26,7 @@ export function Signup() {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:4000/api/auth/signup', {
+      await axios.post('http://localhost:4000/api/auth/signup', {
         email,
         password,
         username
@@ -33,12 +34,8 @@ export function Signup() {
 
       toast.success('Account created successfully!');
       navigate('/login');
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else {  
-        setError('An error occurred. Please try again.');
-      }
+    } catch (error) {
+      setError(getServerMessage(error) || 'An error occurred. Please try again.');
     }
   };
 

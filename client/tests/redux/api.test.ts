@@ -296,7 +296,7 @@ describe('RTK Query APIs', () => {
       const store = makeStore();
 
       await store.dispatch(
-        userApi.endpoints.updateUser.initiate({ id: 'u1', data: { data: { role_name: 'Read-only' } } as never }),
+        userApi.endpoints.updateUser.initiate({ id: 'u1', data: { data: { role_name: 'Read-only' } } }),
       );
 
       expect(requests[0]).toEqual(
@@ -310,7 +310,7 @@ describe('RTK Query APIs', () => {
       store.dispatch(userApi.endpoints.getUserAuth.initiate());
       await flush();
 
-      await store.dispatch(userApi.endpoints.updateUser.initiate({ id: 'u1', data: { name: 'Jane' } }));
+      await store.dispatch(userApi.endpoints.updateUser.initiate({ id: 'u1', data: { data: { name: 'Jane' } } }));
       await flush();
 
       expect(urlsFor(requests, 'auth/user')).toHaveLength(2);

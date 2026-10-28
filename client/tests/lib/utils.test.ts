@@ -1,4 +1,4 @@
-import { cn, formatAmount, formatPercent } from '../../src/lib/utils';
+import { cn, formatAmount, formatPercent, getServerMessage } from '../../src/lib/utils';
 
 describe('cn', () => {
   it('joins class names', () => {
@@ -47,5 +47,20 @@ describe('formatPercent', () => {
 
   it('shows N/A when there is no budget to compare against', () => {
     expect(formatPercent(null)).toBe('N/A');
+  });
+});
+
+describe('getServerMessage', () => {
+  it('reads the message from an axios error response', () => {
+    expect(getServerMessage({ response: { data: { message: 'Wrong Password' } } })).toBe('Wrong Password');
+  });
+
+  it('reads the message from an RTK Query error', () => {
+    expect(getServerMessage({ status: 400, data: { message: 'Category exists' } })).toBe('Category exists');
+  });
+
+  it('returns undefined when there is no server message', () => {
+    expect(getServerMessage(new Error('Network Error'))).toBeUndefined();
+    expect(getServerMessage(null)).toBeUndefined();
   });
 });

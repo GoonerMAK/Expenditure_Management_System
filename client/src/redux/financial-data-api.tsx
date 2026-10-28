@@ -40,7 +40,7 @@ export const financialDataApi = createApi({
         method: 'put',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'FinancialData', id }],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'FinancialData', id }],
     }),
 
   }),

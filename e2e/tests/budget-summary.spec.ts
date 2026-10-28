@@ -1,27 +1,13 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { apiAs, getCategory, loginInUi, runId } from './helpers';
+import { apiAs, createProject, getCategory, loginInUi, runId, type FinancialEntry } from './helpers';
 
-// Covers issue #5: budget vs actual summary on the dashboard.
-// Data created here is kept on purpose for future reference.
+// Budget vs actual summary on the dashboard; test data is kept for reference.
 
 const createProjectWithSpend = async (
   api: APIRequestContext,
   name: string,
-  amounts: { expenditure: number; initial_budget: number; revised_budget: number },
-) => {
-  const category = await getCategory(api);
-  const created = await api.post('projects', {
-    data: { project_name: name, category_id: category.id, category_name: category.category_name },
-  });
-  expect(created.status()).toBe(201);
-  const project = await created.json();
-
-  const financial = await api.post('financialData', {
-    data: { year: 2026, month: 3, project_id: project.id, project_name: name, ...amounts },
-  });
-  expect(financial.status()).toBe(201);
-  return project;
-};
+  amounts: Omit<FinancialEntry, 'year' | 'month'>,
+) => createProject(api, await getCategory(api), name, [{ year: 2026, month: 3, ...amounts }]);
 
 test.describe('budget summary', () => {
   test('API totals a project, using the revised budget when set', async () => {
