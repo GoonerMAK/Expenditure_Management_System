@@ -7,7 +7,7 @@ jest.mock('../../src/lib/use-auth');
 const mockedUseAuth = jest.mocked(useAuth);
 
 const renderAs = (role_name: string | null) => {
-  mockedUseAuth.mockReturnValue({ user: role_name === null ? null : { role_name }, loading: false });
+  mockedUseAuth.mockReturnValue({ user: role_name === null ? null : { id: 'u1', role_name }, loading: false });
   render(<Sidebar />);
 };
 
@@ -65,5 +65,6 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: /add project/i })).toHaveAttribute('href', '/add-project');
     expect(screen.getByRole('link', { name: /add financial info/i })).toHaveAttribute('href', '/add-financial-info');
     expect(screen.getByRole('link', { name: /users & roles/i })).toHaveAttribute('href', '/users-roles');
+    expect(screen.getByRole('link', { name: /analytics/i })).toHaveAttribute('href', '/analytics');
   });
 });

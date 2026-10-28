@@ -1,18 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from "react-hook-form";
-import axios from 'axios';
 import { useAddFinancialDataMutation } from '../redux/financial-data-api';
 import { useGetProjectsQuery } from '../redux/project-api';
-import { format } from "date-fns"
 
-import { Check, ChevronsUpDown, CalendarIcon } from "lucide-react"
-import { cn } from '../lib/utils';
+import { Check, ChevronsUpDown } from "lucide-react"
+import { cn, toOptionalAmount } from '../lib/utils';
 import { Button } from "../components/ui/button";
-import { Calendar } from './ui/calendar';
 import { toast } from "sonner";
 import { Toaster } from './ui/sonner';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "../components/ui/form";
-import { Textarea } from './ui/textarea';
 import { Input } from "./ui/input";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, } from "./ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
@@ -23,14 +19,14 @@ interface FinancialData {
     month: number;
     expenditure: number;
     initial_budget: number;
-    revised_budget: number;
+    revised_budget: number | '';
     project_id: string;
     project_name: string;
 }
 
 
 const AddFinancialForm = () => {
-    const { data: projectsPage, error, isLoading } = useGetProjectsQuery({ offset: 0, limit: 100 });
+    const { data: projectsPage, error } = useGetProjectsQuery({ offset: 0, limit: 100 });
     const projects = projectsPage?.data ?? [];
     const [addFinancialData] = useAddFinancialDataMutation();
 
@@ -41,13 +37,13 @@ const AddFinancialForm = () => {
             project_id: '',
             expenditure: 0,
             initial_budget: 0,
-            revised_budget: 0,
+            revised_budget: '',
             project_name: '',
         },
     });
 
 
-    const { setValue, handleSubmit } = form;
+    const { setValue } = form;
 
     useEffect(() => {
         if (error) {
@@ -71,7 +67,7 @@ const AddFinancialForm = () => {
                 month: parseInt(data.month.toString()),
                 expenditure: parseFloat(data.expenditure.toString()),
                 initial_budget: parseFloat(data.initial_budget.toString()),
-                revised_budget: parseFloat(data.revised_budget.toString()),
+                revised_budget: toOptionalAmount(data.revised_budget),
                 project_id: data.project_id,
                 project_name: data.project_name
             }).unwrap();
@@ -80,7 +76,7 @@ const AddFinancialForm = () => {
             setTimeout(() => {
                 window.location.reload();
             }, 4000);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Failed to add financial data:', error);
             toast.error('Failed to add financial data');
         }
@@ -100,7 +96,7 @@ const AddFinancialForm = () => {
                         <FormField
                             control={form.control}
                             name="project_name"
-                            render={({ field }) => (
+                            render={() => (
                                 <FormItem className=''>
                                     <FormLabel>Project Name</FormLabel>
                                     <Popover>

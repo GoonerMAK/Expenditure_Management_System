@@ -55,19 +55,15 @@ export const updateUser = async (
             throw new Error(`Role '${data.role_name}' not found`);
         }
         data.role_id = role.id;
-    }
-
-    if(data.role_name === "Read-only")
-    {
+    } else if (data.role_id) {
         const role = await prisma.role.findUnique({
-            where: { role_name: data.role_name },
+            where: { id: data.role_id },
         });
         if (!role) {
-            throw new Error(`Role '${data.role_name}' not found`);
+            throw new Error(`Role '${data.role_id}' not found`);
         }
-        data.role_id = role.id;
+        data.role_name = role.role_name;
     }
-
 
     return await prisma.user.update({
         where: { id },
@@ -89,6 +85,19 @@ export const getAllUsers = async () => {
 export const getUserById = async (id: string) => {
     return await prisma.user.findUnique({
         where: { id },
+    });
+};
+
+export const getUserWithRole = async (id: string) => {
+    return await prisma.user.findUnique({
+        where: { id },
+        include: { role: true },
+    });
+};
+
+export const countUsersWithRole = async (role_name: string) => {
+    return await prisma.user.count({
+        where: { role: { role_name } },
     });
 };
 

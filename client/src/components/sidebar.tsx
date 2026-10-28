@@ -1,5 +1,4 @@
 import {
-  Bell,
   Home,
   Blocks,
   Wallet,
@@ -8,7 +7,6 @@ import {
   LineChart,
   Package2,
 } from 'lucide-react';
-import { Button } from './ui/button';
 import useAuth from '../lib/use-auth';
 
 
@@ -16,7 +14,6 @@ const Sidebar = () => {
   const { user } = useAuth();
 
   const contributor = user?.role_name == "Contributor"; 
-  const readOnly = user?.role_name == "Read-only"; 
   const admin = user?.role_name == "Administrator";
 
   return (
@@ -80,7 +77,7 @@ const Sidebar = () => {
             </a> }
 
             <a
-              href="#"
+              href="/analytics"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
             >
               <LineChart className="h-4 w-4" />

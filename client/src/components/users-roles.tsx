@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useForm } from "react-hook-form";
-import axios from 'axios';
 
 import { Button } from "../components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "../components/ui/form";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger, } from "./ui/collapsible"
-import { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow, } from "../components/ui/table";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow, } from "../components/ui/table";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, } from "./ui/command"
 import { Popover, PopoverContent, PopoverTrigger, } from "./ui/popover";
-import { Check, ChevronsUpDown, CalendarIcon } from "lucide-react"
-import { cn } from '../lib/utils';
+import { Check, ChevronsUpDown } from "lucide-react"
+import { cn, getServerMessage } from '../lib/utils';
 
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
@@ -75,7 +74,6 @@ const UserRoles = () => {
     mode: 'onSubmit',
   });
 
-  const { setValue: setAddRoleValue } = addRoleForm;
 
   const { setValue: setSelectRoleValueAssign } = selectRoleFormAssign;
   const { setValue: setSelectUsernameAssign } = selectRoleFormAssign;
@@ -86,7 +84,7 @@ const UserRoles = () => {
   
   const { data: rolesData, refetch: refetchRoles } = useGetRolesQuery();
   const { data: rolesWithUsersData, refetch: refetchRolesWithUsers } = useGetUsersByRolesQuery();
-  const { data: usernamesData, refetch: refetchUsernames } = useGetUsernamesQuery();
+  const { data: usernamesData } = useGetUsernamesQuery();
 
   const [addRole] = useAddRoleMutation();
   const [updateUser] = useUpdateUserMutation();
@@ -140,7 +138,7 @@ const UserRoles = () => {
       setTimeout(() => {
         window.location.reload();
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Error Creating Role ' + error);
       console.error('Error response:', error);
     }
@@ -177,8 +175,8 @@ const UserRoles = () => {
       setTimeout(() => {
         window.location.reload(); 
       }, 2000);
-    } catch (error: any) {
-      toast.error('Error assigning role');
+    } catch (error) {
+      toast.error(getServerMessage(error) || 'Error assigning role');
       console.error('Error response:', error);
     }
   };
@@ -206,8 +204,8 @@ const UserRoles = () => {
       setTimeout(() => {
         window.location.reload(); 
       }, 3000);
-    } catch (error: any) {
-      toast.error('Error revoking role');
+    } catch (error) {
+      toast.error(getServerMessage(error) || 'Error revoking role');
       console.error('Error response:', error);
     }
   };
@@ -255,7 +253,7 @@ const UserRoles = () => {
           <FormField
               control={selectRoleFormAssign.control}
               name="username"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className=''>
                   <FormLabel>Username</FormLabel>
                   <Popover open={openUsernameAssign} onOpenChange={setOpenUsernameAssign}>
@@ -315,7 +313,7 @@ const UserRoles = () => {
             <FormField
               control={selectRoleFormAssign.control}
               name="role_name"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className=''>
                   <FormLabel>Role Name</FormLabel>
                   <Popover open={openRoleAssign} onOpenChange={setOpenRoleAssign}>
@@ -383,7 +381,7 @@ const UserRoles = () => {
           <FormField
               control={selectRoleFormRevoke.control}
               name="username"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className=''>
                   <FormLabel>Username</FormLabel>
                   <Popover open={openUsernameRevoke} onOpenChange={setOpenUsernameRevoke}>
@@ -444,7 +442,7 @@ const UserRoles = () => {
             <FormField
               control={selectRoleFormRevoke.control}
               name="role_name"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className=''>
                   <FormLabel>Role Name</FormLabel>
                   <Popover open={openRoleRevoke} onOpenChange={setOpenRoleRevoke}>

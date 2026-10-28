@@ -5,6 +5,7 @@ import useAuth from '../src/lib/use-auth';
 jest.mock('../src/lib/use-auth');
 jest.mock('../src/pages/login', () => () => <p>Login page</p>);
 jest.mock('../src/pages/dashboard', () => () => <p>Dashboard page</p>);
+jest.mock('../src/pages/analytics', () => () => <p>Analytics page</p>);
 jest.mock('../src/pages/roles', () => () => <p>Roles page</p>);
 jest.mock('../src/pages/add-category', () => () => <p>Add category page</p>);
 jest.mock('../src/pages/add-financial', () => () => <p>Add financial page</p>);
@@ -15,7 +16,7 @@ jest.mock('../src/pages/signup', () => ({ Signup: () => <p>Signup page</p> }));
 const mockedUseAuth = jest.mocked(useAuth);
 
 const visit = (path: string, role: string | null) => {
-  mockedUseAuth.mockReturnValue({ user: role ? { role_name: role } : null, loading: false });
+  mockedUseAuth.mockReturnValue({ user: role ? { id: 'u1', role_name: role } : null, loading: false });
   window.history.pushState({}, '', path);
   render(<App />);
 };
@@ -24,6 +25,7 @@ describe('App routing', () => {
   it.each([
     ['/', 'Dashboard page'],
     ['/dashboard', 'Dashboard page'],
+    ['/analytics', 'Analytics page'],
     ['/projects/p1', 'Project page'],
     ['/add-category', 'Dashboard page'],
     ['/add-project', 'Dashboard page'],
@@ -37,6 +39,7 @@ describe('App routing', () => {
 
   it.each([
     ['/dashboard', 'Dashboard page'],
+    ['/analytics', 'Analytics page'],
     ['/projects/p1', 'Project page'],
     ['/add-category', 'Add category page'],
     ['/add-project', 'Add project page'],
@@ -50,6 +53,7 @@ describe('App routing', () => {
 
   it.each([
     ['/dashboard', 'Dashboard page'],
+    ['/analytics', 'Analytics page'],
     ['/add-category', 'Add category page'],
     ['/add-project', 'Add project page'],
     ['/add-financial-info', 'Add financial page'],
@@ -60,7 +64,7 @@ describe('App routing', () => {
     expect(screen.getByText(expected)).toBeInTheDocument();
   });
 
-  it.each(['/', '/dashboard', '/projects/p1', '/add-project', '/users-roles'])(
+  it.each(['/', '/dashboard', '/analytics', '/projects/p1', '/add-project', '/users-roles'])(
     'anonymous visitor to %s is sent to login',
     (path) => {
       visit(path, null);

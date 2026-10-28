@@ -73,6 +73,34 @@ describe('RTK Query APIs', () => {
       expect(result.data).toEqual({ id: 'p1' });
     });
 
+    it('fetches the budget summary', async () => {
+      const { requests } = mockServer(() => ({ body: { overall: {}, projects: [] } }));
+      const store = makeStore();
+
+      const result = await store.dispatch(projectApi.endpoints.getBudgetSummary.initiate());
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}projects/summary`, method: 'GET' }));
+      expect(result.data).toEqual({ overall: {}, projects: [] });
+    });
+
+    it('fetches the budget by category', async () => {
+      const { requests } = mockServer(() => ({ body: [] }));
+      const store = makeStore();
+
+      await store.dispatch(projectApi.endpoints.getBudgetByCategory.initiate());
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}projects/summary/categories`, method: 'GET' }));
+    });
+
+    it('fetches the trend for a project', async () => {
+      const { requests } = mockServer(() => ({ body: { monthly: [], yearly: [] } }));
+      const store = makeStore();
+
+      await store.dispatch(projectApi.endpoints.getProjectTrend.initiate('p1'));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}projects/p1/trend`, method: 'GET' }));
+    });
+
     it('creates a project with a POST body', async () => {
       const { requests } = mockServer(() => ({ body: { id: 'p1' } }));
       const store = makeStore();
@@ -268,7 +296,7 @@ describe('RTK Query APIs', () => {
       const store = makeStore();
 
       await store.dispatch(
-        userApi.endpoints.updateUser.initiate({ id: 'u1', data: { data: { role_name: 'Read-only' } } as never }),
+        userApi.endpoints.updateUser.initiate({ id: 'u1', data: { data: { role_name: 'Read-only' } } }),
       );
 
       expect(requests[0]).toEqual(
@@ -282,7 +310,7 @@ describe('RTK Query APIs', () => {
       store.dispatch(userApi.endpoints.getUserAuth.initiate());
       await flush();
 
-      await store.dispatch(userApi.endpoints.updateUser.initiate({ id: 'u1', data: { name: 'Jane' } }));
+      await store.dispatch(userApi.endpoints.updateUser.initiate({ id: 'u1', data: { data: { name: 'Jane' } } }));
       await flush();
 
       expect(urlsFor(requests, 'auth/user')).toHaveLength(2);

@@ -32,7 +32,7 @@ const openMenuAndLogout = async () => {
 
 describe('Header', () => {
   beforeEach(() => {
-    mockedUseAuth.mockReturnValue({ user: { username: 'jdoe' }, loading: false });
+    mockedUseAuth.mockReturnValue({ user: { id: 'u1', username: 'jdoe' }, loading: false });
   });
 
   it('greets the signed-in user by username', () => {

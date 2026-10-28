@@ -5,7 +5,7 @@ import { format } from "date-fns"
 import useAuth from '../lib/use-auth';
 
 import { Check, ChevronsUpDown, CalendarIcon } from "lucide-react"
-import { cn } from '../lib/utils';
+import { cn, toOptionalAmount } from '../lib/utils';
 import { Button } from "../components/ui/button";
 import { Calendar } from './ui/calendar';
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import { useGetProjectByIdQuery, useUpdateProjectMutation } from '../redux/proje
 import { useGetCategoriesQuery } from '../redux/category-api';
 import { useGetFinancialDataByIdQuery, useUpdateFinancialDataMutation } from '../redux/financial-data-api';
 import { useGetUserAuthQuery } from '../redux/user-api';
+import { FinancialData as FinancialDataPayload } from './interfaces';
 
 
 interface Project {
@@ -42,7 +43,7 @@ interface FinancialData {
     month: number;
     expenditure: number;
     initial_budget: number;
-    revised_budget: number;
+    revised_budget: number | '';
 }
 
 
@@ -75,11 +76,11 @@ const SingleProject = () => {
             month: 0,
             expenditure: 0,
             initial_budget: 0,
-            revised_budget: 0,
+            revised_budget: '',
         }
     });
 
-    const { setValue, watch, getValues, reset } = form;
+    const { setValue, getValues, reset } = form;
 
 
     useEffect(() => {
@@ -110,7 +111,7 @@ const SingleProject = () => {
                 month: financialData.month,
                 expenditure: financialData.expenditure,
                 initial_budget: financialData.initial_budget,
-                revised_budget: financialData.revised_budget,
+                revised_budget: financialData.revised_budget ?? '',
             });
         }
     }, [financialData, getValues, reset]);
@@ -126,12 +127,12 @@ const SingleProject = () => {
             end_date: data.end_date,
         };
     
-        const financialData: Partial<FinancialData> = {
+        const financialData: Partial<FinancialDataPayload> = {
             year: parseInt(data.year.toString(), 10),
             month: parseInt(data.month.toString(), 10),
             expenditure: parseFloat(data.expenditure.toString()),
             initial_budget: parseFloat(data.initial_budget.toString()),
-            revised_budget: parseFloat(data.revised_budget.toString())
+            revised_budget: toOptionalAmount(data.revised_budget)
         };
 
         try {
@@ -155,7 +156,6 @@ const SingleProject = () => {
     }
 
 
-    const startDate = watch("start_date");
     const canEdit = user?.role_name !== "Read-only";
 
 
@@ -211,7 +211,7 @@ const SingleProject = () => {
                         <FormField
                             control={form.control}
                             name="category_name"
-                            render={({ field }) => (
+                            render={() => (
                                 <FormItem className=''>
                                     <FormLabel>Category Name</FormLabel>
                                     <Popover open={open} onOpenChange={setOpen}>

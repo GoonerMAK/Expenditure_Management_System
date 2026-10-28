@@ -1,7 +1,15 @@
 import jwt from 'jsonwebtoken';
-import { isAuthenticated } from '../../../src/middlewares/auth.middleware.js';
-import { ID } from '../helpers/factories.js';
+import { authorizeRoles, isAuthenticated } from '../../../src/middlewares/auth.middleware.js';
+import * as userRepository from '../../../src/repositories/user.repository.js';
+import { buildRole, buildUser, ID } from '../helpers/factories.js';
 import { expectResponse, mockNext, mockRequest, mockResponse } from '../helpers/express.js';
+
+jest.mock('../../../src/repositories/user.repository.js');
+
+const repository = jest.mocked(userRepository);
+
+const withRole = (role_name: string, user_role_name = role_name) =>
+  ({ ...buildUser({ role_name: user_role_name }), role: buildRole({ role_name }) });
 
 const SECRET = 'unit-test-secret';
 
@@ -125,5 +133,90 @@ describe('auth.middleware isAuthenticated', () => {
     delete (req as { cookies?: unknown }).cookies;
 
     expect(() => isAuthenticated(req, mockResponse(), mockNext())).toThrow(TypeError);
+  });
+});
+
+describe('auth.middleware authorizeRoles', () => {
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('looks up the logged-in user and calls next when their role is allowed', async () => {
+    repository.getUserWithRole.mockResolvedValue(withRole('Contributor'));
+    const res = mockResponse();
+    const next = mockNext();
+
+    await authorizeRoles('Contributor', 'Administrator')(mockRequest({ user: { id: ID } }), res, next);
+
+    expect(repository.getUserWithRole).toHaveBeenCalledWith(ID);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('responds 403 when the user role is not allowed', async () => {
+    repository.getUserWithRole.mockResolvedValue(withRole('Read-only'));
+    const res = mockResponse();
+    const next = mockNext();
+
+    await authorizeRoles('Contributor', 'Administrator')(mockRequest({ user: { id: ID } }), res, next);
+
+    expectResponse(res, 403, { message: 'Access denied. Insufficient permissions.' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('responds 403 when the user has no role', async () => {
+    repository.getUserWithRole.mockResolvedValue({ ...buildUser({ role_name: null, role_id: null }), role: null });
+    const res = mockResponse();
+    const next = mockNext();
+
+    await authorizeRoles('Administrator')(mockRequest({ user: { id: ID } }), res, next);
+
+    expectResponse(res, 403, { message: 'Access denied. Insufficient permissions.' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('authorizes by the linked role, not the role name copied onto the user', async () => {
+    repository.getUserWithRole.mockResolvedValue(withRole('Read-only', 'Administrator'));
+    const res = mockResponse();
+    const next = mockNext();
+
+    await authorizeRoles('Administrator')(mockRequest({ user: { id: ID } }), res, next);
+
+    expectResponse(res, 403, { message: 'Access denied. Insufficient permissions.' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('allows a user whose copied role name is stale but whose linked role is allowed', async () => {
+    repository.getUserWithRole.mockResolvedValue(withRole('Administrator', 'Read-only'));
+    const res = mockResponse();
+    const next = mockNext();
+
+    await authorizeRoles('Administrator')(mockRequest({ user: { id: ID } }), res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('responds 403 when the user no longer exists', async () => {
+    repository.getUserWithRole.mockResolvedValue(null);
+    const res = mockResponse();
+    const next = mockNext();
+
+    await authorizeRoles('Administrator')(mockRequest({ user: { id: ID } }), res, next);
+
+    expectResponse(res, 403, { message: 'Access denied. Insufficient permissions.' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('responds 500 when the user lookup fails', async () => {
+    repository.getUserWithRole.mockRejectedValue(new Error('db down'));
+    const res = mockResponse();
+    const next = mockNext();
+
+    await authorizeRoles('Administrator')(mockRequest({ user: { id: ID } }), res, next);
+
+    expectResponse(res, 500, { message: 'Failed to check permissions.' });
+    expect(next).not.toHaveBeenCalled();
   });
 });

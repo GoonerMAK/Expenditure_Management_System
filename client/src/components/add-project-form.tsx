@@ -36,7 +36,7 @@ interface Project {
 const AddProjectForm = () => {
     const [open, setOpen] = useState(false);
 
-    const { data: categories = [], isLoading: isLoadingCategories } = useGetCategoriesQuery();
+    const { data: categories = [] } = useGetCategoriesQuery();
     const { data: userData } = useGetUserAuthQuery();
     const [addProject] = useAddProjectMutation();
 
@@ -72,7 +72,7 @@ const AddProjectForm = () => {
             setTimeout(() => {
                 window.location.reload();
             }, 4000);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error response:', error);
             toast.error("Error creating project")
         }
@@ -131,7 +131,7 @@ const AddProjectForm = () => {
                         <FormField
                             control={form.control}
                             name="category_name"
-                            render={({ field }) => (
+                            render={() => (
                                 <FormItem className=''>
                                     <FormLabel>Category Name</FormLabel>
                                     <Popover open={open} onOpenChange={setOpen}>

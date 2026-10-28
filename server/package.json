@@ -11,15 +11,20 @@
     "test:unit:coverage": "jest tests/unit-tests --coverage",
     "test:integration": "jest tests/integration-tests --maxWorkers=1",
     "build": "tsc",
-    "dev": "node dist/index.js"
+    "dev": "node dist/index.js",
+    "seed:admin": "tsc && node dist/scripts/seed-admin.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@prisma/client": "^5.15.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.14.2",
     "@types/supertest": "^6.0.2",
     "jest": "^29.7.0",

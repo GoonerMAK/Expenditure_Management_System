@@ -81,3 +81,29 @@ export const getProjectById = async (id: string) => {
 export const getProjectsCount = async () => {
     return await prisma.project.count();
 };
+export const getProjectsWithFinancialData = async () => {
+    return await prisma.project.findMany({
+        select: {
+            id: true,
+            project_name: true,
+            category_id: true,
+            category: {
+                select: { category_name: true },
+            },
+            financial_data: {
+                select: { expenditure: true, initial_budget: true, revised_budget: true },
+            },
+        },
+        orderBy: {
+            created_at: 'asc'
+        }
+    });
+};
+
+export const getProjectFinancialData = async (id: string) => {
+    return await prisma.financialData.findMany({
+        where: { project_id: id },
+        select: { year: true, month: true, expenditure: true, initial_budget: true, revised_budget: true },
+        orderBy: [{ year: 'asc' }, { month: 'asc' }],
+    });
+};

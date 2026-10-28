@@ -10,7 +10,7 @@ export interface FinancialData {
     month: number;
     expenditure: number;
     initial_budget: number;
-    revised_budget: number;
+    revised_budget: number | null;
     project_id?: string;
     project_name?: string;
 }
@@ -21,11 +21,11 @@ export interface Project {
     description: string;
     category_id: string;
     category_name: string;
-    start_date: Date;
-    end_date: Date;
+    start_date: string | Date;
+    end_date: string | Date;
     created_by_id: string;
-    created_at: Date;
-    updated_at: Date;
+    created_at: string | Date;
+    updated_at: string | Date;
 }
 
 export interface User {
@@ -67,4 +67,35 @@ export interface Pagination<T> {
         totalPages: number;
         hasMore: boolean;
     };
+}
+export interface BudgetTotals {
+    budget: number;
+    spent: number;
+    remaining: number;
+    percent_used: number | null;
+    over_budget: boolean;
+}
+
+export interface ProjectBudget extends BudgetTotals {
+    project_id: string;
+    project_name: string;
+}
+
+export interface BudgetSummary {
+    overall: BudgetTotals & { over_budget_count: number };
+    projects: ProjectBudget[];
+}
+
+export interface CategoryBudget {
+    category_id: string;
+    category_name: string;
+    budget: number;
+    spent: number;
+}
+
+export interface ProjectTrend {
+    project_id: string;
+    project_name: string;
+    monthly: { year: number; month: number; budget: number; spent: number }[];
+    yearly: { year: number; budget: number; spent: number }[];
 }

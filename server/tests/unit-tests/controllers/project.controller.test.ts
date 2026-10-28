@@ -31,7 +31,7 @@ describe('project.controller', () => {
       service.createProject.mockResolvedValue(project);
       const res = mockResponse();
 
-      await projectController.createProject(mockRequest({ body }), res);
+      await projectController.createProject(mockRequest({ body, user: { id: ID } }), res);
 
       expect(service.createProject).toHaveBeenCalledWith(
         'Bridge Renovation',
@@ -40,7 +40,7 @@ describe('project.controller', () => {
         'Infrastructure',
         START,
         END,
-        OTHER_ID,
+        ID,
       );
       expectResponse(res, 201, project);
     });
@@ -56,7 +56,7 @@ describe('project.controller', () => {
   });
 
   describe('updateProject', () => {
-    it('responds 200 and forwards the path id with the body fields', async () => {
+    it('responds 200 and forwards the path id with the body fields, without changing the owner', async () => {
       const project = buildProject();
       service.updateProject.mockResolvedValue(project);
       const res = mockResponse();
@@ -71,7 +71,6 @@ describe('project.controller', () => {
         'Infrastructure',
         START,
         END,
-        OTHER_ID,
       );
       expectResponse(res, 200, project);
     });
@@ -177,6 +176,79 @@ describe('project.controller', () => {
       const res = mockResponse();
 
       await projectController.getProjectById(mockRequest({ params: { id: ID } }), res);
+
+      expectResponse(res, 500, { error: 'boom' });
+    });
+  });
+
+  describe('getBudgetSummary', () => {
+    it('responds 200 with the summary', async () => {
+      const summary = { overall: { budget: 0 }, projects: [] };
+      service.getBudgetSummary.mockResolvedValue(summary as never);
+      const res = mockResponse();
+
+      await projectController.getBudgetSummary(mockRequest(), res);
+
+      expectResponse(res, 200, summary);
+    });
+
+    it('responds 500 when the service throws', async () => {
+      service.getBudgetSummary.mockRejectedValue(new Error('boom'));
+      const res = mockResponse();
+
+      await projectController.getBudgetSummary(mockRequest(), res);
+
+      expectResponse(res, 500, { error: 'boom' });
+    });
+  });
+
+  describe('getBudgetByCategory', () => {
+    it('responds 200 with the category totals', async () => {
+      const categories = [{ category_id: 'c1', category_name: 'Roads', budget: 100, spent: 50 }];
+      service.getBudgetByCategory.mockResolvedValue(categories);
+      const res = mockResponse();
+
+      await projectController.getBudgetByCategory(mockRequest(), res);
+
+      expectResponse(res, 200, categories);
+    });
+
+    it('responds 500 when the service throws', async () => {
+      service.getBudgetByCategory.mockRejectedValue(new Error('boom'));
+      const res = mockResponse();
+
+      await projectController.getBudgetByCategory(mockRequest(), res);
+
+      expectResponse(res, 500, { error: 'boom' });
+    });
+  });
+
+  describe('getProjectTrend', () => {
+    it('responds 200 with the trend for the path id', async () => {
+      const trend = { project_id: ID, project_name: 'Bridge', monthly: [], yearly: [] };
+      service.getProjectTrend.mockResolvedValue(trend);
+      const res = mockResponse();
+
+      await projectController.getProjectTrend(mockRequest({ params: { id: ID } }), res);
+
+      expect(service.getProjectTrend).toHaveBeenCalledWith(ID);
+      expectResponse(res, 200, trend);
+    });
+
+    it('responds 404 when the project does not exist', async () => {
+      service.getProjectTrend.mockResolvedValue(null);
+      const res = mockResponse();
+
+      await projectController.getProjectTrend(mockRequest({ params: { id: ID } }), res);
+
+      expectResponse(res, 404, { error: `Project with id ${ID} not found` });
+    });
+
+    it('responds 500 when the service throws', async () => {
+      service.getProjectTrend.mockRejectedValue(new Error('boom'));
+      const res = mockResponse();
+
+      await projectController.getProjectTrend(mockRequest({ params: { id: ID } }), res);
 
       expectResponse(res, 500, { error: 'boom' });
     });
