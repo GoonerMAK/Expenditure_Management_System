@@ -24,6 +24,22 @@ test.describe('chart data API', () => {
     });
   });
 
+  test('category totals use the current category name after a rename', async () => {
+    const { api } = await apiAs('contributor');
+    const category = await createCategory(api, 'E2E Chart');
+    await createProject(api, category, `E2E Chart Rename ${runId()}`, [
+      { year: 2026, month: 1, expenditure: 10, initial_budget: 100, revised_budget: null },
+    ]);
+    const renamed = `E2E Renamed ${runId().slice(-7)}`;
+    expect((await api.put(`categories/${category.id}`, { data: { category_name: renamed } })).status()).toBe(200);
+
+    const categories = await (await api.get('projects/summary/categories')).json();
+
+    expect(categories.find((c: { category_id: string }) => c.category_id === category.id)).toEqual(
+      expect.objectContaining({ category_name: renamed }),
+    );
+  });
+
   test('project trend groups entries by month and by year', async () => {
     const { api } = await apiAs('contributor');
     const category = await createCategory(api, 'E2E Chart');
@@ -149,6 +165,38 @@ test.describe('Analytics page', () => {
     await card.getByRole('button', { name: 'Try again' }).click();
     await expect(card.getByRole('alert')).toHaveCount(0);
     await expect(card.getByRole('img', { name: /Spending by category/ })).toBeVisible();
+  });
+
+  test('switching project shows loading, not the previous project trend', async ({ page }) => {
+    const { api } = await apiAs('contributor');
+    const category = await createCategory(api, 'E2E Chart');
+    const first = `E2E Switch A ${runId()}`;
+    const second = `E2E Switch B ${runId()}`;
+    await createProject(api, category, first, [{ year: 2026, month: 1, expenditure: 10, initial_budget: 100, revised_budget: null }]);
+    const slow = await createProject(api, category, second, [
+      { year: 2026, month: 2, expenditure: 20, initial_budget: 200, revised_budget: null },
+    ]);
+
+    await loginInUi(page, 'readOnly');
+    await page.goto('/analytics');
+    await selectTrendProject(page, first);
+    const card = page.locator('.rounded-lg', { has: page.getByText('Monthly budget vs spent') }).first();
+    await expect(card).toContainText(first);
+
+    let release = () => {};
+    const released = new Promise<void>((resolve) => (release = resolve));
+    await page.route(`**/api/projects/${slow.id}/trend`, async (route) => {
+      await released;
+      await route.continue();
+    });
+    await selectTrendProject(page, second);
+
+    await expect(page.getByLabel('Project')).toContainText(second);
+    await expect(card).toContainText('Loading...');
+    await expect(card).not.toContainText(first);
+
+    release();
+    await expect(card).toContainText(second);
   });
 
   test('a failed trend request shows an error on that chart only', async ({ page }) => {

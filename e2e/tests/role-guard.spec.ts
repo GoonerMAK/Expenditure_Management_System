@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { apiAs, data, getCategory, loginInUi, runId } from './helpers';
+import { apiAs, data, getCategory, loginInUi, openLastProjectsPage, runId } from './helpers';
 
 // Role permissions enforced on the server, not only in the UI; test data is kept for reference.
 
@@ -103,7 +103,9 @@ test.describe('UI role access', () => {
   });
 
   test('project created by the contributor shows them as owner on the dashboard', async ({ page }) => {
+    const { api } = await apiAs('admin');
     await loginInUi(page, 'admin');
+    await openLastProjectsPage(page, api);
     const card = page.getByText(/E2E Owner Check .* \(edited\)/).first();
     await expect(card).toBeVisible();
     await expect(page.getByText(`Created by: ${data.users.contributor.username}`).first()).toBeVisible();

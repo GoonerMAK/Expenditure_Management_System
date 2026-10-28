@@ -33,6 +33,14 @@ export const getCategory = async (api: APIRequestContext) => {
 
 export type FinancialEntry = { year: number; month: number; expenditure: number; initial_budget: number; revised_budget: number | null };
 
+// Projects are listed oldest first, so the newest one is on the last page
+export const openLastProjectsPage = async (page: Page, api: APIRequestContext) => {
+  const { pagination } = await (await api.get('projects?offset=0&limit=6')).json();
+  if (pagination.totalPages > 1) {
+    await page.getByRole('link', { name: String(pagination.totalPages), exact: true }).click();
+  }
+};
+
 export const selectTrendProject = async (page: Page, name: string) => {
   await page.getByLabel('Project').click();
   await page.getByRole('option', { name, exact: true }).click();
