@@ -8,7 +8,7 @@ test.describe('chart data API', () => {
     const { api } = await apiAs('contributor');
     const category = await createCategory(api, 'E2E Chart');
     await createProject(api, category, `E2E Chart A ${runId()}`, [
-      { year: 2026, month: 1, expenditure: 400, initial_budget: 1000, revised_budget: 0 },
+      { year: 2026, month: 1, expenditure: 400, initial_budget: 1000, revised_budget: null },
     ]);
     await createProject(api, category, `E2E Chart B ${runId()}`, [
       { year: 2026, month: 2, expenditure: 900, initial_budget: 500, revised_budget: 800 },
@@ -28,9 +28,9 @@ test.describe('chart data API', () => {
     const { api } = await apiAs('contributor');
     const category = await createCategory(api, 'E2E Chart');
     const project = await createProject(api, category, `E2E Trend ${runId()}`, [
-      { year: 2025, month: 11, expenditure: 100, initial_budget: 600, revised_budget: 0 },
+      { year: 2025, month: 11, expenditure: 100, initial_budget: 600, revised_budget: null },
       { year: 2026, month: 1, expenditure: 250, initial_budget: 600, revised_budget: 700 },
-      { year: 2026, month: 2, expenditure: 800, initial_budget: 600, revised_budget: 0 },
+      { year: 2026, month: 2, expenditure: 800, initial_budget: 600, revised_budget: null },
     ]);
 
     const trend = await (await api.get(`projects/${project.id}/trend`)).json();
@@ -73,7 +73,7 @@ test.describe('Analytics page', () => {
     const { api } = await apiAs('contributor');
     const category = await createCategory(api, 'E2E Chart');
     await createProject(api, category, `E2E Chart UI ${runId()}`, [
-      { year: 2026, month: 4, expenditure: 1234, initial_budget: 5000, revised_budget: 0 },
+      { year: 2026, month: 4, expenditure: 1234, initial_budget: 5000, revised_budget: null },
     ]);
 
     await loginInUi(page, 'readOnly');
@@ -109,8 +109,8 @@ test.describe('Analytics page', () => {
     const category = await createCategory(api, 'E2E Chart');
     const name = `E2E Trend UI ${runId()}`;
     await createProject(api, category, name, [
-      { year: 2025, month: 12, expenditure: 300, initial_budget: 1000, revised_budget: 0 },
-      { year: 2026, month: 5, expenditure: 1500, initial_budget: 1000, revised_budget: 0 },
+      { year: 2025, month: 12, expenditure: 300, initial_budget: 1000, revised_budget: null },
+      { year: 2026, month: 5, expenditure: 1500, initial_budget: 1000, revised_budget: null },
     ]);
 
     await loginInUi(page, 'readOnly');

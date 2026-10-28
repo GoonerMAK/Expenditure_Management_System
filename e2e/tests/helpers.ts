@@ -31,7 +31,7 @@ export const getCategory = async (api: APIRequestContext) => {
   return categories.find((c: { category_name: string }) => c.category_name === data.category);
 };
 
-export type FinancialEntry = { year: number; month: number; expenditure: number; initial_budget: number; revised_budget: number };
+export type FinancialEntry = { year: number; month: number; expenditure: number; initial_budget: number; revised_budget: number | null };
 
 export const createCategory = async (api: APIRequestContext, prefix: string) => {
   // Category names are limited to 20 characters

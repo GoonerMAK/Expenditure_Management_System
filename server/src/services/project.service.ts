@@ -111,7 +111,7 @@ type FinancialEntry = {
 
 // A revised budget replaces the initial one for that entry
 const sumBudget = (entries: FinancialEntry[]) =>
-    entries.reduce((sum, entry) => sum + (entry.revised_budget || entry.initial_budget || 0), 0);
+    entries.reduce((sum, entry) => sum + (entry.revised_budget ?? entry.initial_budget ?? 0), 0);
 
 const sumSpent = (entries: FinancialEntry[]) =>
     entries.reduce((sum, entry) => sum + (entry.expenditure || 0), 0);

@@ -8,6 +8,9 @@ export function cn(...inputs: ClassValue[]) {
 export const formatAmount = (amount: number) =>
   amount.toLocaleString('en-US', { maximumFractionDigits: 2 })
 
+export const toOptionalAmount = (value: number | string | null | undefined) =>
+  value === '' || value === null || value === undefined ? null : parseFloat(value.toString())
+
 export const formatPercent = (percent: number | null) =>
   percent === null ? 'N/A' : `${percent}%`
 

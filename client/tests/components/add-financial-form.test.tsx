@@ -43,7 +43,7 @@ describe('AddFinancialForm', () => {
     jest.useRealTimers();
   });
 
-  it('defaults the year and month to the current date and amounts to zero', () => {
+  it('defaults the year and month to the current date, amounts to zero and leaves the revised budget empty', () => {
     setup();
     const now = new Date();
 
@@ -51,7 +51,7 @@ describe('AddFinancialForm', () => {
     expect(screen.getByLabelText('Month')).toHaveValue(now.getMonth() + 1);
     expect(screen.getByLabelText('Expenditure')).toHaveValue(0);
     expect(screen.getByLabelText('Initial Budget')).toHaveValue(0);
-    expect(screen.getByLabelText('Revised Budget')).toHaveValue(0);
+    expect(screen.getByLabelText('Revised Budget')).toHaveValue(null);
   });
 
   it('constrains the month input to 1-12', () => {
@@ -104,5 +104,26 @@ describe('AddFinancialForm', () => {
         expect.objectContaining({ project_id: 'p2', project_name: 'School Expansion', expenditure: 1500.75 }),
       ),
     );
+  });
+
+  it('sends no revised budget when the field is left empty', async () => {
+    const { trigger, user } = setup({ data: paginatedProjects });
+
+    await user.click(screen.getByRole('button', { name: /select project/i }));
+    await user.click(await screen.findByRole('option', { name: 'School Expansion' }));
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+    await waitFor(() => expect(trigger).toHaveBeenCalledWith(expect.objectContaining({ revised_budget: null })));
+  });
+
+  it('sends a revised budget of zero when zero is typed', async () => {
+    const { trigger, user } = setup({ data: paginatedProjects });
+
+    await user.click(screen.getByRole('button', { name: /select project/i }));
+    await user.click(await screen.findByRole('option', { name: 'School Expansion' }));
+    await user.type(screen.getByLabelText('Revised Budget'), '0');
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+    await waitFor(() => expect(trigger).toHaveBeenCalledWith(expect.objectContaining({ revised_budget: 0 })));
   });
 });

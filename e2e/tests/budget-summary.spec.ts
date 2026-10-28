@@ -45,7 +45,7 @@ test.describe('budget summary', () => {
   test('dashboard shows overall totals and marks an over-budget project', async ({ page }) => {
     const { api } = await apiAs('contributor');
     const name = `E2E Budget Over ${runId()}`;
-    await createProjectWithSpend(api, name, { expenditure: 1500, initial_budget: 1000, revised_budget: 0 });
+    await createProjectWithSpend(api, name, { expenditure: 1500, initial_budget: 1000, revised_budget: null });
     const { overall } = await (await api.get('projects/summary')).json();
     const { pagination } = await (await api.get('projects?offset=0&limit=6')).json();
 

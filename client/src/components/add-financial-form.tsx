@@ -4,7 +4,7 @@ import { useAddFinancialDataMutation } from '../redux/financial-data-api';
 import { useGetProjectsQuery } from '../redux/project-api';
 
 import { Check, ChevronsUpDown } from "lucide-react"
-import { cn } from '../lib/utils';
+import { cn, toOptionalAmount } from '../lib/utils';
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 import { Toaster } from './ui/sonner';
@@ -19,7 +19,7 @@ interface FinancialData {
     month: number;
     expenditure: number;
     initial_budget: number;
-    revised_budget: number;
+    revised_budget: number | '';
     project_id: string;
     project_name: string;
 }
@@ -37,7 +37,7 @@ const AddFinancialForm = () => {
             project_id: '',
             expenditure: 0,
             initial_budget: 0,
-            revised_budget: 0,
+            revised_budget: '',
             project_name: '',
         },
     });
@@ -67,7 +67,7 @@ const AddFinancialForm = () => {
                 month: parseInt(data.month.toString()),
                 expenditure: parseFloat(data.expenditure.toString()),
                 initial_budget: parseFloat(data.initial_budget.toString()),
-                revised_budget: parseFloat(data.revised_budget.toString()),
+                revised_budget: toOptionalAmount(data.revised_budget),
                 project_id: data.project_id,
                 project_name: data.project_name
             }).unwrap();

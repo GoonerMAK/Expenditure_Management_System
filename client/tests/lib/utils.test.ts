@@ -1,4 +1,4 @@
-import { cn, formatAmount, formatPercent, getServerMessage } from '../../src/lib/utils';
+import { cn, formatAmount, formatPercent, getServerMessage, toOptionalAmount } from '../../src/lib/utils';
 
 describe('cn', () => {
   it('joins class names', () => {
@@ -62,5 +62,21 @@ describe('getServerMessage', () => {
   it('returns undefined when there is no server message', () => {
     expect(getServerMessage(new Error('Network Error'))).toBeUndefined();
     expect(getServerMessage(null)).toBeUndefined();
+  });
+});
+
+describe('toOptionalAmount', () => {
+  it.each(['', null, undefined])('returns null for the blank value %p', (value) => {
+    expect(toOptionalAmount(value)).toBeNull();
+  });
+
+  it('keeps zero as a real amount', () => {
+    expect(toOptionalAmount(0)).toBe(0);
+    expect(toOptionalAmount('0')).toBe(0);
+  });
+
+  it('parses numbers and numeric strings', () => {
+    expect(toOptionalAmount('1500.5')).toBe(1500.5);
+    expect(toOptionalAmount(800)).toBe(800);
   });
 });

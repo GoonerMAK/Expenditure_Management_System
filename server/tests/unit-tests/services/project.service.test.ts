@@ -285,6 +285,16 @@ describe('project.service', () => {
       });
     });
 
+    it('treats a revised budget of zero as a cut to zero, not as missing', async () => {
+      repo.getProjectsWithFinancialData.mockResolvedValue([
+        { id: ID, project_name: 'Cut', ...inCategory('c1', 'Roads'), financial_data: [entry(100, 5000, 0)] },
+      ]);
+
+      const summary = await projectService.getBudgetSummary();
+
+      expect(summary.projects[0]).toEqual(expect.objectContaining({ budget: 0, spent: 100, remaining: -100, over_budget: true }));
+    });
+
     it('treats missing amounts as zero and leaves percent empty when there is no budget', async () => {
       repo.getProjectsWithFinancialData.mockResolvedValue([
         { id: ID, project_name: 'Empty', ...inCategory('c1', 'Roads'), financial_data: [entry(null, null, null)] },
