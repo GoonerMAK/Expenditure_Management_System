@@ -157,7 +157,7 @@ export const getBudgetByCategory = async () => {
 
         for (const project of projects) {
             const category = categories.get(project.category_id)
-                ?? { category_id: project.category_id, category_name: project.category_name, budget: 0, spent: 0 };
+                ?? { category_id: project.category_id, category_name: project.category.category_name, budget: 0, spent: 0 };
             category.budget += sumBudget(project.financial_data);
             category.spent += sumSpent(project.financial_data);
             categories.set(project.category_id, category);

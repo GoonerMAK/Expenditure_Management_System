@@ -243,7 +243,7 @@ describe('project.service', () => {
     revised_budget,
   });
 
-  const inCategory = (category_id: string, category_name: string) => ({ category_id, category_name });
+  const inCategory = (category_id: string, category_name: string) => ({ category_id, category: { category_name } });
 
   describe('getBudgetSummary', () => {
     it('totals each project, preferring the revised budget over the initial one', async () => {

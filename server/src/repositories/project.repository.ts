@@ -87,7 +87,9 @@ export const getProjectsWithFinancialData = async () => {
             id: true,
             project_name: true,
             category_id: true,
-            category_name: true,
+            category: {
+                select: { category_name: true },
+            },
             financial_data: {
                 select: { expenditure: true, initial_budget: true, revised_budget: true },
             },
