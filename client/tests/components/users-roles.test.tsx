@@ -87,6 +87,14 @@ describe('UserRoles', () => {
   });
 
   describe('roles table', () => {
+    // Kept first: React logs each nesting warning only once per test file.
+    it('renders valid table markup', () => {
+      setup();
+
+      const messages = jest.mocked(console.error).mock.calls.map(([message]) => String(message));
+      expect(messages.filter((message) => message.includes('validateDOMNesting'))).toEqual([]);
+    });
+
     it('lists every role', () => {
       setup();
 
@@ -100,8 +108,8 @@ describe('UserRoles', () => {
 
       await user.click(screen.getByRole('button', { name: 'Contributor' }));
 
-      expect(await screen.findByRole('cell', { name: 'bob' })).toBeInTheDocument();
-      expect(screen.getByRole('cell', { name: 'carol' })).toBeInTheDocument();
+      expect(await screen.findByText('bob', { selector: 'li' })).toBeInTheDocument();
+      expect(screen.getByText('carol', { selector: 'li' })).toBeInTheDocument();
     });
 
     it('shows a placeholder for a role nobody holds', async () => {
@@ -109,7 +117,7 @@ describe('UserRoles', () => {
 
       await user.click(screen.getByRole('button', { name: 'Read-only' }));
 
-      expect(await screen.findByRole('cell', { name: 'No users found' })).toBeInTheDocument();
+      expect(await screen.findByText('No users found', { selector: 'li' })).toBeInTheDocument();
     });
   });
 
@@ -156,12 +164,18 @@ describe('UserRoles', () => {
   });
 
   describe('assign roles form', () => {
+    it('skips the unassigned roles query until a user is chosen', () => {
+      setup();
+
+      expect(mockedGetUnassigned).toHaveBeenLastCalledWith('', { skip: true });
+    });
+
     it('loads the unassigned roles for the chosen user', async () => {
       const { user } = setup();
 
       await pick(user, section('Assign Roles'), 'select username', 'bob');
 
-      expect(mockedGetUnassigned).toHaveBeenLastCalledWith('u2');
+      expect(mockedGetUnassigned).toHaveBeenLastCalledWith('u2', { skip: false });
     });
 
     it('assigns the chosen role to the chosen user', async () => {
@@ -210,12 +224,18 @@ describe('UserRoles', () => {
   });
 
   describe('revoke access form', () => {
+    it('skips the assigned roles query until a user is chosen', () => {
+      setup();
+
+      expect(mockedGetAssigned).toHaveBeenLastCalledWith('', { skip: true });
+    });
+
     it('loads the assigned role for the chosen user', async () => {
       const { user } = setup();
 
       await pick(user, section('Revoke Access'), 'select username', 'bob');
 
-      expect(mockedGetAssigned).toHaveBeenLastCalledWith('u2');
+      expect(mockedGetAssigned).toHaveBeenLastCalledWith('u2', { skip: false });
     });
 
     it('demotes the user to Read-only without touching role_id', async () => {

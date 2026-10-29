@@ -87,7 +87,7 @@ const SingleProject = () => {
             reset({
                 ...getValues(),
                 project_name: project.project_name,
-                description: project.description,
+                description: project.description ?? '',
                 category_id: project.category_id,
                 category_name: project.category_name,
                 start_date: new Date(project.start_date).toISOString(),
