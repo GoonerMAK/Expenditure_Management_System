@@ -89,8 +89,8 @@ const UserRoles = () => {
   const [addRole] = useAddRoleMutation();
   const [updateUser] = useUpdateUserMutation();
 
-  const { data: unassignedRolesData } = useGetUnassignedRolesByUserIdQuery(selectedUserIdAssign);
-  const { data: assignedRolesData } = useGetAssignedRolesByUserIdQuery(selectedUserIdRevoke);
+  const { data: unassignedRolesData } = useGetUnassignedRolesByUserIdQuery(selectedUserIdAssign, { skip: !selectedUserIdAssign });
+  const { data: assignedRolesData } = useGetAssignedRolesByUserIdQuery(selectedUserIdRevoke, { skip: !selectedUserIdRevoke });
  
 
   useEffect(() => {
@@ -516,22 +516,19 @@ const UserRoles = () => {
           <TableBody>
             {roles.map((role) => (
               <TableRow key={role.id}>
-                <Collapsible>
-                  <CollapsibleTrigger><TableCell>{role.role_name}</TableCell></CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <Table>
-                      <TableBody>
-                        <TableRow className='flex flex-col'>
-                          <TableHead className="text-center text-s">List of users under this role</TableHead>
-                          {rolesWithUsers.find(r => r.role_name === role.role_name)?.users.map(user => (
-                            <TableCell className="py-1" key={user}>{user}</TableCell>
-                          )) || <TableCell className="py-1">No users found</TableCell>}
-                        </TableRow>
-                      </TableBody>
-                      <br></br>
-                    </Table>
-                  </CollapsibleContent>
-                </Collapsible>
+                <TableCell>
+                  <Collapsible>
+                    <CollapsibleTrigger>{role.role_name}</CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <p className="text-center text-s font-medium text-muted-foreground mt-2">List of users under this role</p>
+                      <ul>
+                        {rolesWithUsers.find(r => r.role_name === role.role_name)?.users.map(user => (
+                          <li className="py-1" key={user}>{user}</li>
+                        )) || <li className="py-1">No users found</li>}
+                      </ul>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -130,6 +130,15 @@ describe('SingleProject (single project card)', () => {
     expect(screen.getByLabelText('Description')).toHaveValue('Renovate the river bridge');
   });
 
+  it('shows an empty description when the project has none', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    setup({ projectQuery: { data: { ...project, description: null } } });
+
+    await waitFor(() => expect(screen.getByLabelText('Project Name')).toHaveValue('Bridge Renovation'));
+    expect(screen.getByLabelText('Description')).toHaveValue('');
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
   it('starts read-only with no Update button', () => {
     setup();
 
