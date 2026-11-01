@@ -37,7 +37,7 @@ model User {
   age         String?
   gender      String?
   nationality String?
-  role        Role?     @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  role        Role?     @relation(fields: [role_id], references: [id], onDelete: SetNull)
   role_id     String?
   role_name   String?
 
