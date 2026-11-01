@@ -261,7 +261,7 @@ const SingleProject = () => {
                                         </PopoverContent>
                                     </Popover>
                                     <FormDescription>
-                                        These are the different categories a project can be
+                                        These are the different categories a project can belong to
                                     </FormDescription>
                                     <FormMessage />
                                     <br></br>
