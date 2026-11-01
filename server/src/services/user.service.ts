@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
 import * as userRepository from '../repositories/user.repository.js';
+import { LastAdminError } from '../roles.js';
 
 let saltRounds = 10;
 
@@ -74,6 +75,7 @@ export const updateUser = async (
 
         return updatedUser;
     } catch (error) {
+        if (error instanceof LastAdminError) throw error;
         throw new Error(`Failed to update user: ${error.message}`);
     }
 };
@@ -86,6 +88,7 @@ export const deleteUser = async (id: string) => {
         }
         return deletedUser;
     } catch (error) {
+        if (error instanceof LastAdminError) throw error;
         throw new Error(`Failed to delete user: ${error}`);
     }
 };
