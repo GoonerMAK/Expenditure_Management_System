@@ -1,5 +1,23 @@
 import prisma from '../db.js';
-import { User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
+import { getAdminRole, LastAdminError } from '../roles.js';
+
+const countAdmins = (tx: Prisma.TransactionClient) =>
+    tx.user.count({ where: { role: { role_name: getAdminRole() } } });
+
+const keepAnAdmin = async <T>(change: (tx: Prisma.TransactionClient) => Promise<T>) => {
+    return await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Role" WHERE role_name = ${getAdminRole()} FOR UPDATE`;
+        const adminsBefore = await countAdmins(tx);
+        const result = await change(tx);
+
+        if (adminsBefore > 0 && await countAdmins(tx) === 0) {
+            throw new LastAdminError();
+        }
+
+        return result;
+    });
+};
 
 
 export const createUser = async (
@@ -65,17 +83,17 @@ export const updateUser = async (
         data.role_name = role.role_name;
     }
 
-    return await prisma.user.update({
+    return await keepAnAdmin((tx) => tx.user.update({
         where: { id },
         data,
-    });
+    }));
 };
 
 
 export const deleteUser = async (id: string) => {
-    return await prisma.user.delete({
+    return await keepAnAdmin((tx) => tx.user.delete({
         where: { id },
-    });
+    }));
 };
 
 export const getAllUsers = async () => {
@@ -92,12 +110,6 @@ export const getUserWithRole = async (id: string) => {
     return await prisma.user.findUnique({
         where: { id },
         include: { role: true },
-    });
-};
-
-export const countUsersWithRole = async (role_name: string) => {
-    return await prisma.user.count({
-        where: { role: { role_name } },
     });
 };
 

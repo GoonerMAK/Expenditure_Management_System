@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import * as userService from '../../../src/services/user.service.js';
 import * as userRepository from '../../../src/repositories/user.repository.js';
+import { LastAdminError } from '../../../src/roles.js';
 import { buildUser, ID, OTHER_ID } from '../helpers/factories.js';
 
 jest.mock('../../../src/repositories/user.repository.js');
@@ -235,6 +236,13 @@ describe('user.service', () => {
         'Failed to update user: Unique constraint failed on email',
       );
     });
+
+    it('rethrows a last-Administrator error unwrapped', async () => {
+      const error = new LastAdminError();
+      repo.updateUser.mockRejectedValue(error);
+
+      await expect(userService.updateUser(ID, undefined, undefined, undefined, undefined, undefined, 'Read-only')).rejects.toBe(error);
+    });
   });
 
   describe('deleteUser', () => {
@@ -256,6 +264,13 @@ describe('user.service', () => {
       repo.deleteUser.mockRejectedValue(new Error('timeout'));
 
       await expect(userService.deleteUser(ID)).rejects.toThrow('Failed to delete user: Error: timeout');
+    });
+
+    it('rethrows a last-Administrator error unwrapped', async () => {
+      const error = new LastAdminError();
+      repo.deleteUser.mockRejectedValue(error);
+
+      await expect(userService.deleteUser(ID)).rejects.toBe(error);
     });
   });
 

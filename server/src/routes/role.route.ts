@@ -7,7 +7,7 @@ import { roleSchema, roleParamsSchema } from '../validators/role.validator.js';
 
 export const roleRouter = Router();
 
-roleRouter.post('/roles', validateRequest(roleSchema), isAuthenticated, authorizeRoles('Administrator'), roleController.createRole);
+roleRouter.post('/roles', isAuthenticated, authorizeRoles('Administrator'), validateRequest(roleSchema), roleController.createRole);
 roleRouter.put('/roles/:id', isAuthenticated, authorizeRoles('Administrator'), validateParams(roleParamsSchema), protectBuiltInRoles, validateRequest(roleSchema), roleController.updateRole);
 roleRouter.delete('/roles/:id', isAuthenticated, authorizeRoles('Administrator'), validateParams(roleParamsSchema), protectBuiltInRoles, roleController.deleteRole);
 roleRouter.get('/roles', isAuthenticated, roleController.getAllRoles);
