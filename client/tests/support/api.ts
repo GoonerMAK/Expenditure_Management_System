@@ -23,6 +23,10 @@ export const makeStore = () =>
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(...apis.map((api) => api.middleware)),
   });
 
+// Form data bodies are kept as text so tests can look for their fields.
+const parseBody = (text: string, contentType: string | null) =>
+  contentType?.startsWith('multipart/form-data') ? text : JSON.parse(text);
+
 type Route = (request: RecordedRequest) => { status?: number; body?: unknown } | undefined;
 
 export const mockServer = (route: Route = () => ({ body: {} })) => {
@@ -34,7 +38,7 @@ export const mockServer = (route: Route = () => ({ body: {} })) => {
       url: request.url,
       method: request.method,
       credentials: request.credentials,
-      body: text ? JSON.parse(text) : undefined,
+      body: text ? parseBody(text, request.headers.get('content-type')) : undefined,
     };
     requests.push(recorded);
     const { status = 200, body = {} } = route(recorded) ?? {};

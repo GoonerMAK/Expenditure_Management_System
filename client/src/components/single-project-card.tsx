@@ -5,7 +5,7 @@ import { format } from "date-fns"
 import useAuth from '../lib/use-auth';
 
 import { Check, ChevronsUpDown, CalendarIcon } from "lucide-react"
-import { cn, toOptionalAmount } from '../lib/utils';
+import { cn, getYearMonth, toOptionalAmount } from '../lib/utils';
 import { Button } from "../components/ui/button";
 import { Calendar } from './ui/calendar';
 import { toast } from "sonner";
@@ -19,9 +19,10 @@ import { Popover, PopoverContent, PopoverTrigger, } from "./ui/popover"
 
 import { useGetProjectByIdQuery, useUpdateProjectMutation } from '../redux/project-api';
 import { useGetCategoriesQuery } from '../redux/category-api';
-import { useGetFinancialDataByIdQuery, useUpdateFinancialDataMutation } from '../redux/financial-data-api';
+import { useGetFinancialDataByIdQuery, useGetProjectExpensesQuery, useUpdateFinancialDataMutation } from '../redux/financial-data-api';
 import { useGetUserAuthQuery } from '../redux/user-api';
 import { FinancialData as FinancialDataPayload } from './interfaces';
+import ExpenseEntries from './expense-entries';
 
 
 interface Project {
@@ -58,6 +59,7 @@ const SingleProject = () => {
     const { data: financialData, error: financialDataError, isLoading: financialDataLoading } = useGetFinancialDataByIdQuery(id!);
     const { data: categories } = useGetCategoriesQuery();
     const { data: authUser } = useGetUserAuthQuery();
+    const { data: expenseEntries } = useGetProjectExpensesQuery(id!);
 
     const [updateProject] = useUpdateProjectMutation();
     const [updateFinancialData] = useUpdateFinancialDataMutation();
@@ -157,6 +159,12 @@ const SingleProject = () => {
 
 
     const canEdit = user?.role_name !== "Read-only";
+
+    const [formYear, formMonth] = form.watch(['year', 'month']);
+    const expenditureFromEntries = (expenseEntries ?? []).some((entry) => {
+        const { year, month } = getYearMonth(entry.date);
+        return year === Number(formYear) && month === Number(formMonth);
+    });
 
 
     return (
@@ -401,10 +409,12 @@ const SingleProject = () => {
                                 <FormItem>
                                     <FormLabel>Expenditure</FormLabel>
                                     <FormControl>
-                                        <Input type="number" step="0.01" {...field} disabled={!editMode} />
+                                        <Input type="number" step="0.01" {...field} disabled={!editMode || expenditureFromEntries} />
                                     </FormControl>
                                     <FormDescription>
-                                        Enter the expenditure amount (optional)
+                                        {expenditureFromEntries
+                                            ? 'Adds up from the expense entries for this month'
+                                            : 'Enter the expenditure amount (optional)'}
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -449,6 +459,9 @@ const SingleProject = () => {
                         {editMode && <Button type="submit">Update</Button>}
                     </form>
                 </Form>
+            </div>
+            <div className="flex-1 min-w-0">
+                <ExpenseEntries projectId={id!} canEdit={canEdit} />
             </div>
         </div>
     );
