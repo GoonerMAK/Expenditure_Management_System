@@ -1,5 +1,6 @@
 import prisma from '../db.js';
 import { FinancialData } from '@prisma/client';
+import { syncMonthIfItHasEntries } from './expense-entry.repository.js';
 
 export const createFinancialData = async (
     year: number,
@@ -10,7 +11,7 @@ export const createFinancialData = async (
     project_id?: string,
     project_name?: string,
 ) => {
-    return await prisma.financialData.create({
+    const created = await prisma.financialData.create({
         data: {
             year,
             month,
@@ -25,6 +26,8 @@ export const createFinancialData = async (
             }
         },
     });
+    await syncMonthIfItHasEntries(prisma, created.project_id, created.year, created.month);
+    return await prisma.financialData.findUniqueOrThrow({ where: { id: created.id } });
 };
 
 export const updateFinancialData = async (
@@ -50,10 +53,14 @@ export const updateFinancialData = async (
         where: { project_id: id },
     });
 
-    return await prisma.financialData.update({
+    const updated = await prisma.financialData.update({
         where: { id: financialData.id },
         data,
     });
+    // A month that has expense entries keeps their total, including the month the row moved away from.
+    await syncMonthIfItHasEntries(prisma, updated.project_id, updated.year, updated.month);
+    await syncMonthIfItHasEntries(prisma, financialData.project_id, financialData.year, financialData.month);
+    return await prisma.financialData.findUniqueOrThrow({ where: { id: updated.id } });
 };
 
 export const deleteFinancialData = async (id: string) => {

@@ -1,4 +1,4 @@
-import { cn, formatAmount, formatDate, formatMonth, formatPercent, getServerMessage, toOptionalAmount } from '../../src/lib/utils';
+import { cn, formatAmount, formatDate, formatDay, formatMonth, getYearMonth, formatPercent, getServerMessage, toOptionalAmount } from '../../src/lib/utils';
 
 describe('cn', () => {
   it('joins class names', () => {
@@ -76,6 +76,20 @@ describe('formatDate', () => {
 
   it.each([undefined, null, ''])('says "Not specified" for %p', (value) => {
     expect(formatDate(value)).toBe('Not specified');
+  });
+});
+
+describe('getYearMonth', () => {
+  it('reads the year and month in UTC', () => {
+    expect(getYearMonth('2026-03-01T00:00:00.000Z')).toEqual({ year: 2026, month: 3 });
+    expect(getYearMonth(new Date('2025-12-31T00:00:00.000Z'))).toEqual({ year: 2025, month: 12 });
+  });
+});
+
+describe('formatDay', () => {
+  it('formats a UTC midnight date without shifting the day', () => {
+    expect(formatDay('2026-03-01T00:00:00.000Z')).toBe('1 Mar 2026');
+    expect(formatDay(new Date('2025-12-31T00:00:00.000Z'))).toBe('31 Dec 2025');
   });
 });
 
