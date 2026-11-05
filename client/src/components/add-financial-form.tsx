@@ -7,6 +7,7 @@ import { Check, ChevronsUpDown } from "lucide-react"
 import { cn, toOptionalAmount } from '../lib/utils';
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
+import SectionCard from './section-card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "../components/ui/form";
 import { Input } from "./ui/input";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, } from "./ui/command"
@@ -85,8 +86,8 @@ const AddFinancialForm = () => {
 
     return (
 
-        <div className="flex space-x-6 p-12 ml-10">
-            <div className="w-1/3">
+        <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-start lg:p-12">
+            <SectionCard title="Add financial info" className="lg:w-1/3">
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex-col space-y-6">
@@ -233,8 +234,8 @@ const AddFinancialForm = () => {
                         <Button type="submit"> Submit</Button>
                     </form>
                 </Form>
-            </div>
-        </div >
+            </SectionCard>
+        </div>
 
 
     )

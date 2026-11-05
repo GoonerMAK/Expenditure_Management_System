@@ -44,10 +44,35 @@ describe('AddCategoryForm', () => {
     expect(screen.getByRole('cell', { name: 'Healthcare' })).toBeInTheDocument();
   });
 
-  it('renders an empty table when categories have not loaded', () => {
+  it('says there are no categories when categories have not loaded', () => {
     setup({ data: undefined });
 
     expect(screen.queryAllByRole('cell')).toHaveLength(0);
+    expect(screen.getByText('No categories yet')).toBeInTheDocument();
+  });
+
+  it('says there are no categories when the list is empty', () => {
+    setup({ data: [] });
+
+    expect(screen.getByText('No categories yet')).toBeInTheDocument();
+  });
+
+  it('puts the form and the list in their own outlined sections', () => {
+    setup();
+
+    const form = screen.getByRole('region', { name: 'Add a category' });
+    const list = screen.getByRole('region', { name: 'Existing categories' });
+
+    expect(form).toHaveClass('border', 'border-section');
+    expect(list).toHaveClass('border', 'border-section');
+    expect(form).toContainElement(screen.getByLabelText('Category Name'));
+    expect(list).toContainElement(screen.getByRole('cell', { name: 'Infrastructure' }));
+  });
+
+  it('separates each category with a visible line', () => {
+    setup();
+
+    screen.getAllByRole('row').forEach((row) => expect(row).toHaveClass('border-b', 'border-section'));
   });
 
   it('creates the category, confirms it and refetches the list', async () => {
