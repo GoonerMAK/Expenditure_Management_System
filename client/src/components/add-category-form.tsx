@@ -3,11 +3,11 @@ import { useGetCategoriesQuery, useAddCategoryMutation } from '../redux/category
 
 import { Button } from "../components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "../components/ui/form";
-import {Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow, } from "../components/ui/table";
+import { Table, TableBody, TableCell, TableRow } from "../components/ui/table";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
-import { Toaster } from './ui/sonner';
 import { getServerMessage } from '../lib/utils';
+import SectionCard from './section-card';
 
 
 interface Category {
@@ -41,9 +41,8 @@ const AddCategoryForm = () => {
   };
 
   return (
-    <div className="flex space-x-6 p-12 ml-10">
-      <div className="w-1/3">
-      <Toaster/>
+    <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-start lg:p-12">
+      <SectionCard title="Add a category" className="lg:w-1/3">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-col space-y-6">
             <FormField
@@ -65,24 +64,23 @@ const AddCategoryForm = () => {
             <Button type="submit" disabled={isLoading}>Submit</Button>
           </form>
         </Form>
-      </div>
+      </SectionCard>
 
-              
-      <Table className="ml-60 w-1/2">
-        <TableCaption></TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-center text-xl">A list of your existing Categories</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {categories.map((category) => (
-            <TableRow key={category.id}>
-              <TableCell>{category.category_name}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <SectionCard title="Existing categories" className="lg:flex-1">
+        {categories.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No categories yet</p>
+        ) : (
+          <Table>
+            <TableBody>
+              {categories.map((category) => (
+                <TableRow key={category.id} className="border-section">
+                  <TableCell>{category.category_name}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </SectionCard>
     </div>
   );
 };

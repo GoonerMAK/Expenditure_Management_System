@@ -43,6 +43,12 @@ describe('AddFinancialForm', () => {
     jest.useRealTimers();
   });
 
+  it('shows the form in an outlined section', () => {
+    setup();
+
+    expect(screen.getByRole('region', { name: 'Add financial info' })).toHaveClass('border', 'border-section');
+  });
+
   it('defaults the year and month to the current date, amounts to zero and leaves the revised budget empty', () => {
     setup();
     const now = new Date();

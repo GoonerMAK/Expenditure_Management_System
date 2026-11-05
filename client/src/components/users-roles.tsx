@@ -12,7 +12,6 @@ import { cn, getServerMessage } from '../lib/utils';
 
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
-import { Toaster } from './ui/sonner';
 
 import {useGetRolesQuery, useAddRoleMutation, useGetUsersByRolesQuery, useGetAssignedRolesByUserIdQuery, useGetUnassignedRolesByUserIdQuery}  from '../redux/role-api';
 import { useGetUsernamesQuery, useUpdateUserMutation } from '../redux/user-api';
@@ -213,7 +212,6 @@ const UserRoles = () => {
 
   return (
     <div className="flex space-x-6 p-12 ml-10">
-      <Toaster />
 
       <div className="w-1/3">
 

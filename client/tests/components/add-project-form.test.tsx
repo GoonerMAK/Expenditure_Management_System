@@ -49,6 +49,12 @@ describe('AddProjectForm', () => {
     jest.useRealTimers();
   });
 
+  it('shows the form in an outlined section', () => {
+    setup();
+
+    expect(screen.getByRole('region', { name: 'Add a project' })).toHaveClass('border', 'border-section');
+  });
+
   it('prefills both dates with today', () => {
     setup();
     const today = format(new Date(), 'PPP');

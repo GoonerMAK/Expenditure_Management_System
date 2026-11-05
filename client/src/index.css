@@ -30,6 +30,7 @@
 
       --border: 20 5.9% 90%;
       --input: 20 5.9% 90%;
+      --section-border: 20 5.9% 52%;
       --ring: 20 14.3% 4.1%;
 
       --radius: 0.5rem;
@@ -67,6 +68,7 @@
       --destructive-foreground: 60 9.1% 97.8%;
 
       --border: 12 6.5% 15.1%;
+      --section-border: 20 5.9% 42%;
       --input: 12 6.5% 15.1%;
       --ring: 24 5.7% 82.9%;
     }
