@@ -133,6 +133,37 @@ describe('category.controller', () => {
     });
   });
 
+  describe('getCategoryUsage', () => {
+    it('responds 200 with what uses the category', async () => {
+      const usage = { category_id: ID, category_name: 'Tech', project_count: 0, projects: [], financial_record_count: 0 };
+      service.getCategoryUsage.mockResolvedValue(usage);
+      const res = mockResponse();
+
+      await categoryController.getCategoryUsage(mockRequest({ params: { id: ID } }), res);
+
+      expect(service.getCategoryUsage).toHaveBeenCalledWith(ID);
+      expectResponse(res, 200, usage);
+    });
+
+    it('responds 404 when the category no longer exists', async () => {
+      service.getCategoryUsage.mockRejectedValue(new CategoryNotFoundError());
+      const res = mockResponse();
+
+      await categoryController.getCategoryUsage(mockRequest({ params: { id: ID } }), res);
+
+      expectResponse(res, 404, GONE);
+    });
+
+    it('responds 500 with a generic message when the lookup fails', async () => {
+      service.getCategoryUsage.mockRejectedValue(new Error('timeout'));
+      const res = mockResponse();
+
+      await categoryController.getCategoryUsage(mockRequest({ params: { id: ID } }), res);
+
+      expectResponse(res, 500, { message: "Couldn't check what uses this category. Try again." });
+    });
+  });
+
   describe('getAllCategories', () => {
     it('responds 200 with every category', async () => {
       const categories = [buildCategory()];

@@ -1,4 +1,5 @@
 import * as projectRepository from '../repositories/project.repository.js';
+import { getUncategorisedLabel } from '../categories.js';
 
 export const createProject = async (
     project_name: string,
@@ -172,11 +173,16 @@ export const getBudgetSummary = async () => {
 export const getBudgetByCategory = async () => {
     try {
         const projects = await projectRepository.getProjectsWithFinancialData();
-        const categories = new Map<string, { category_id: string; category_name: string; budget: number; spent: number }>();
+        const categories = new Map<string | null, { category_id: string | null; category_name: string; budget: number; spent: number }>();
 
         for (const project of projects) {
             const category = categories.get(project.category_id)
-                ?? { category_id: project.category_id, category_name: project.category.category_name, budget: 0, spent: 0 };
+                ?? {
+                    category_id: project.category_id,
+                    category_name: project.category?.category_name ?? getUncategorisedLabel(),
+                    budget: 0,
+                    spent: 0,
+                };
             category.budget += sumBudget(project.financial_data);
             category.spent += sumSpent(project.financial_data);
             categories.set(project.category_id, category);

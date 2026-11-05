@@ -60,8 +60,8 @@ model Project {
   id             String          @id @default(uuid())
   project_name   String          @unique
   description    String?
-  category       Category        @relation(fields: [category_id], references: [id], onDelete: Cascade)
-  category_id    String
+  category       Category?       @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  category_id    String?
   category_name  String          @default("")
   start_date     DateTime?
   end_date       DateTime?

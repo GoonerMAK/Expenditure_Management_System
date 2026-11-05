@@ -154,6 +154,98 @@ describe("---------------- category routes ----------------", ()=> {
     });
 
 
+    describe("category in use by projects", () => {
+
+        let usedCategoryId: string;
+        const projectIds: string[] = [];
+
+        beforeAll(async () => {
+            const category = await prisma.category.create({ data: { category_name: `C${runId} Used` } });
+            usedCategoryId = category.id;
+            for (const name of ['B', 'A']) {
+                const project = await prisma.project.create({
+                    data: {
+                        project_name: `P${runId} ${name}`,
+                        category_id: usedCategoryId,
+                        category_name: category.category_name,
+                        created_by_id: userIds[0],
+                        financial_data: {
+                            create: [
+                                { year: 2026, month: 1, expenditure: 10, project_name: `P${runId} ${name}` },
+                                { year: 2026, month: 2, expenditure: 20, project_name: `P${runId} ${name}` },
+                            ],
+                        },
+                    },
+                });
+                projectIds.push(project.id);
+            }
+        });
+
+        afterAll(async () => {
+            await prisma.project.deleteMany({ where: { id: { in: projectIds } } });
+        });
+
+        it("should list the projects and financial records that use the category", async () => {
+            const response = await request.get(`/api/categories/${usedCategoryId}/usage`)
+                .set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual({
+                category_id: usedCategoryId,
+                category_name: `C${runId} Used`,
+                project_count: 2,
+                projects: [
+                    { id: projectIds[1], project_name: `P${runId} A` },
+                    { id: projectIds[0], project_name: `P${runId} B` },
+                ],
+                financial_record_count: 4,
+            });
+        });
+
+        it("should return 403 on usage for a Read-only user", async () => {
+            const response = await request.get(`/api/categories/${usedCategoryId}/usage`)
+                .set('Cookie', `jwt=${readOnlyToken}`);
+            expect(response.status).toBe(403);
+        });
+
+        it("should rename the category on its projects too", async () => {
+            const response = await request.put(`/api/categories/${usedCategoryId}`)
+                .set('Cookie', `jwt=${token}`)
+                .send({ category_name: `C${runId} Renamed` });
+            expect(response.status).toBe(200);
+
+            const projects = await prisma.project.findMany({ where: { id: { in: projectIds } } });
+            projects.forEach((project) => expect(project.category_name).toBe(`C${runId} Renamed`));
+        });
+
+        it("should delete the category but keep its projects and financial records", async () => {
+            const response = await request.delete(`/api/categories/${usedCategoryId}`)
+                .set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(200);
+
+            const projects = await prisma.project.findMany({ where: { id: { in: projectIds } } });
+            expect(projects).toHaveLength(2);
+            projects.forEach((project) => {
+                expect(project.category_id).toBeNull();
+                expect(project.category_name).toBe('');
+            });
+            expect(await prisma.financialData.count({ where: { project_id: { in: projectIds } } })).toBe(4);
+        });
+
+        it("should return 404 on usage once the category is deleted", async () => {
+            const response = await request.get(`/api/categories/${usedCategoryId}/usage`)
+                .set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(404);
+        });
+
+        it("should show the projects as Uncategorised in the category summary", async () => {
+            const response = await request.get('/api/projects/summary/categories')
+                .set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(200);
+            expect(response.body).toContainEqual(expect.objectContaining({ category_id: null, category_name: 'Uncategorised' }));
+        });
+    });
+
+
     describe("DELETE /api/categories/:id", () => {
 
         it("should delete the created category and return success code 200", async () => {
