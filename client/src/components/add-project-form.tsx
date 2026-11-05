@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from "react-hook-form";
 import { format } from "date-fns"
 
@@ -18,6 +18,10 @@ import { Textarea } from './ui/textarea';
 import { Input } from "./ui/input";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, } from "./ui/command"
 import { Popover, PopoverContent, PopoverTrigger, } from "./ui/popover"
+import AddCategoryOption from './add-category-option';
+import { Category } from './interfaces';
+
+const MANAGER_ROLES = ['Contributor', 'Administrator'];
 
 
 interface Project {
@@ -35,6 +39,8 @@ interface Project {
 
 const AddProjectForm = () => {
     const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const searchRef = useRef<HTMLInputElement>(null);
 
     const { data: categories = [] } = useGetCategoriesQuery();
     const { data: userData } = useGetUserAuthQuery();
@@ -55,6 +61,18 @@ const AddProjectForm = () => {
     });
 
     const { setValue, watch } = form;
+    const canAddCategory = MANAGER_ROLES.includes(userData?.user.role_name ?? '');
+
+    const handleOpenChange = (isOpen: boolean) => {
+        setOpen(isOpen);
+        if (!isOpen) setSearch('');
+    };
+
+    const selectCategory = (category: Category) => {
+        setValue("category_name", category.category_name);
+        setValue("category_id", category.id);
+        handleOpenChange(false);
+    };
 
     useEffect(() => {
         if (userData) {
@@ -133,7 +151,7 @@ const AddProjectForm = () => {
                             render={() => (
                                 <FormItem className=''>
                                     <FormLabel>Category Name</FormLabel>
-                                    <Popover open={open} onOpenChange={setOpen}>
+                                    <Popover open={open} onOpenChange={handleOpenChange}>
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
@@ -147,7 +165,12 @@ const AddProjectForm = () => {
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[200px] p-0">
                                             <Command>
-                                                <CommandInput placeholder="Search Category..." />
+                                                <CommandInput
+                                                    ref={searchRef}
+                                                    placeholder="Search or add..."
+                                                    value={search}
+                                                    onValueChange={setSearch}
+                                                />
                                                 <CommandList>
                                                     {categories.length === 0 && <CommandEmpty>No Category found</CommandEmpty>}
                                                     <CommandGroup>
@@ -158,10 +181,10 @@ const AddProjectForm = () => {
                                                                 onSelect={(currentValue) => {
                                                                     const selectedCategory = categories.find(cat => cat.category_name === currentValue);
                                                                     if (selectedCategory) {
-                                                                        setValue("category_name", selectedCategory.category_name);
-                                                                        setValue("category_id", selectedCategory.id);
+                                                                        selectCategory(selectedCategory);
+                                                                    } else {
+                                                                        handleOpenChange(false);
                                                                     }
-                                                                    setOpen(false);
                                                                 }}
                                                             >
                                                                 <Check
@@ -174,6 +197,15 @@ const AddProjectForm = () => {
                                                             </CommandItem>
                                                         ))}
                                                     </CommandGroup>
+                                                    {canAddCategory && (
+                                                        <AddCategoryOption
+                                                            search={search}
+                                                            categories={categories}
+                                                            roleName={userData?.user.role_name}
+                                                            onCreated={selectCategory}
+                                                            onAddNew={() => searchRef.current?.focus()}
+                                                        />
+                                                    )}
                                                 </CommandList>
                                             </Command>
                                         </PopoverContent>
