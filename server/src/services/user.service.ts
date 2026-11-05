@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
 import * as userRepository from '../repositories/user.repository.js';
+import { LastAdminError } from '../roles.js';
+import { toPublicUser } from '../users.js';
 
 let saltRounds = 10;
 
@@ -36,7 +38,7 @@ export const createUser = async (
         const hashedPassword = await bcrypt.hash(password, getSaltRounds());
 
         const user = await userRepository.createUser(username, hashedPassword, email, name, role_id, role_name, age, gender, nationality);
-        return user;
+        return toPublicUser(user);
     } catch (error) {
         throw new Error(`Failed to create user: ${error}`);
     }
@@ -72,8 +74,9 @@ export const updateUser = async (
             throw new Error(`User with id ${id} not found`);
         }
 
-        return updatedUser;
+        return toPublicUser(updatedUser);
     } catch (error) {
+        if (error instanceof LastAdminError) throw error;
         throw new Error(`Failed to update user: ${error.message}`);
     }
 };
@@ -84,8 +87,9 @@ export const deleteUser = async (id: string) => {
         if (!deletedUser) {
             throw new Error(`User with id ${id} not found`);
         }
-        return deletedUser;
+        return toPublicUser(deletedUser);
     } catch (error) {
+        if (error instanceof LastAdminError) throw error;
         throw new Error(`Failed to delete user: ${error}`);
     }
 };
@@ -93,7 +97,7 @@ export const deleteUser = async (id: string) => {
 export const getAllUsers = async () => {
     try {
         const users = await userRepository.getAllUsers();
-        return users;
+        return users.map(toPublicUser);
     } catch (error) {
         throw new Error(`Failed to fetch users: ${error}`);
     }
@@ -105,7 +109,7 @@ export const getUserById = async (id: string) => {
         if (!user) {
             throw new Error(`User with id ${id} not found`);
         }
-        return user;
+        return toPublicUser(user);
     } catch (error) {
         throw new Error(`Failed to fetch user: ${error}`);
     }
@@ -123,7 +127,7 @@ export const getAllUsernames = async () => {
 export const getUsersWithoutRoles = async () => {
     try {
         const usersWithoutRoles = await userRepository.getUsersWithoutRoles();
-        return usersWithoutRoles;
+        return usersWithoutRoles.map(toPublicUser);
     } catch (error) {
         throw new Error(`Failed to fetch users without roles: ${error.message}`);
     }

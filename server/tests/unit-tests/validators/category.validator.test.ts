@@ -13,9 +13,11 @@ describe('category.validator categorySchema', () => {
   });
 
   it.each([
-    ['empty', '', 'Category name must be at least 3 characters long'],
-    ['2 characters', 'ab', 'Category name must be at least 3 characters long'],
-    ['21 characters', 'a'.repeat(21), 'Category name must be at most 20 characters long'],
+    ['empty', '', "Category name can't be empty."],
+    ['only spaces', '   ', "Category name can't be empty."],
+    ['2 characters', 'ab', 'Category name must be 3–20 characters.'],
+    ['2 characters once trimmed', '  ab  ', 'Category name must be 3–20 characters.'],
+    ['21 characters', 'a'.repeat(21), 'Category name must be 3–20 characters.'],
   ])('rejects a name that is %s', (_label, category_name, message) => {
     const result = categorySchema.safeParse({ category_name });
 
@@ -23,12 +25,22 @@ describe('category.validator categorySchema', () => {
     expect(result.error?.issues[0].message).toBe(message);
   });
 
-  it('rejects a missing name', () => {
-    expect(categorySchema.safeParse({}).success).toBe(false);
+  it('trims spaces around the name', () => {
+    expect(categorySchema.parse({ category_name: '  Tech  ' })).toEqual({ category_name: 'Tech' });
   });
 
-  it('rejects a non-string name', () => {
-    expect(categorySchema.safeParse({ category_name: 12345 }).success).toBe(false);
+  it('rejects a missing name as empty', () => {
+    const result = categorySchema.safeParse({});
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Category name can't be empty.");
+  });
+
+  it('rejects a non-string name as empty', () => {
+    const result = categorySchema.safeParse({ category_name: 12345 });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Category name can't be empty.");
   });
 
   it('strips unknown keys', () => {

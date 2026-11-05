@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { Project, Pagination } from "../components/interfaces";
+import { Project, Pagination, BudgetSummary, CategoryBudget, ProjectTrend } from "../components/interfaces";
 
 export const projectApi = createApi({
   reducerPath: "projectApi",
@@ -40,11 +40,32 @@ export const projectApi = createApi({
         method: 'put',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Project', id }],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Project', id }],
+    }),
+
+    getBudgetSummary: builder.query<BudgetSummary, void>({
+      query: () => ({
+        url: 'projects/summary',
+        method: 'get',
+      }),
+    }),
+
+    getBudgetByCategory: builder.query<CategoryBudget[], void>({
+      query: () => ({
+        url: 'projects/summary/categories',
+        method: 'get',
+      }),
+    }),
+
+    getProjectTrend: builder.query<ProjectTrend, string>({
+      query: (id) => ({
+        url: `projects/${id}/trend`,
+        method: 'get',
+      }),
     }),
 
   }),
 });
 
-export const {useAddProjectMutation, useGetProjectByIdQuery, useGetProjectsQuery, useUpdateProjectMutation} = projectApi;
+export const {useAddProjectMutation, useGetBudgetByCategoryQuery, useGetBudgetSummaryQuery, useGetProjectByIdQuery, useGetProjectTrendQuery, useGetProjectsQuery, useUpdateProjectMutation} = projectApi;
 

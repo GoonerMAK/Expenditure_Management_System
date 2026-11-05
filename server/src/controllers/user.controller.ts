@@ -1,6 +1,15 @@
 import { Request, Response } from 'express';
 import * as userService from '../services/user.service.js';
 import { UserCreate, UserUpdate, UserParams } from '../validators/user.validator.js';
+import { LastAdminError } from '../roles.js';
+
+const sendUserWriteError = (res: Response, error: Error) => {
+    if (error instanceof LastAdminError) {
+        res.status(409).json({ message: error.message });
+    } else {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 export const createUser = async (req: Request<UserParams, unknown, UserCreate, unknown>, res: Response) => {
     const { username, password, email, name, role_id, role_name, age, gender, nationality } = req.body;
@@ -23,7 +32,7 @@ export const updateUser = async (req: Request<UserParams, unknown, UserUpdate, u
             res.status(200).json(updatedUser);
         }
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        sendUserWriteError(res, error);
     }
 };
 
@@ -37,7 +46,7 @@ export const deleteUser = async (req: Request<UserParams, unknown, unknown, unkn
             res.status(200).json(deletedUser);
         }
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        sendUserWriteError(res, error);
     }
 };
 

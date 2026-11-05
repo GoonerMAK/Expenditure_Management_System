@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 
 import * as authRepository from '../repositories/auth.repository.js';
 import * as userRepository from '../repositories/user.repository.js';
+import { toPublicUser } from '../users.js';
 
 dotenv.config();
 
@@ -29,7 +30,7 @@ export const signUp = async (
 
         const user = await authRepository.signUp(email, hashedPassword, username);
 
-        return {user};
+        return { user: toPublicUser(user) };
     } catch (error) {
         throw new Error(`Failed to create user: ${error}`);
     }
@@ -56,7 +57,7 @@ export const logIn = async (
 
         const token = jwt.sign( { id: user.id }, process.env.SECRET, { expiresIn: '3d' } );
 
-        return { user, token };
+        return { user: toPublicUser(user), token };
     } catch (error) {
         throw new Error(`Failed to sign in: ${error.message}`);
     }
@@ -73,7 +74,7 @@ export const getAuthenticatedUser = async (
         throw new Error('User not found');
       }
       
-      return user;
+      return toPublicUser(user);
     } catch (error) {
       throw new Error('Failed to get user information');
     }

@@ -1,7 +1,8 @@
 import bcrypt from 'bcrypt';
 import * as userService from '../../../src/services/user.service.js';
 import * as userRepository from '../../../src/repositories/user.repository.js';
-import { buildUser, ID, OTHER_ID } from '../helpers/factories.js';
+import { LastAdminError } from '../../../src/roles.js';
+import { buildUser, ID, OTHER_ID, withoutPassword } from '../helpers/factories.js';
 
 jest.mock('../../../src/repositories/user.repository.js');
 jest.mock('bcrypt', () => ({
@@ -57,7 +58,7 @@ describe('user.service', () => {
       repo.getUserByEmail.mockResolvedValue(null);
       repo.createUser.mockResolvedValue(user);
 
-      await expect(create()).resolves.toEqual(user);
+      await expect(create()).resolves.toEqual(withoutPassword(user));
       expect(hash).toHaveBeenCalledWith('secret123', expect.anything());
       expect(repo.createUser).toHaveBeenCalledWith(
         'jdoe',
@@ -198,7 +199,7 @@ describe('user.service', () => {
         'Canadian',
       );
 
-      expect(result).toEqual(updated);
+      expect(result).toEqual(withoutPassword(updated));
       expect(repo.updateUser).toHaveBeenCalledWith(ID, {
         username: 'jdoe2',
         password: HASHED,
@@ -235,6 +236,13 @@ describe('user.service', () => {
         'Failed to update user: Unique constraint failed on email',
       );
     });
+
+    it('rethrows a last-Administrator error unwrapped', async () => {
+      const error = new LastAdminError();
+      repo.updateUser.mockRejectedValue(error);
+
+      await expect(userService.updateUser(ID, undefined, undefined, undefined, undefined, undefined, 'Read-only')).rejects.toBe(error);
+    });
   });
 
   describe('deleteUser', () => {
@@ -242,7 +250,7 @@ describe('user.service', () => {
       const user = buildUser();
       repo.deleteUser.mockResolvedValue(user);
 
-      await expect(userService.deleteUser(ID)).resolves.toEqual(user);
+      await expect(userService.deleteUser(ID)).resolves.toEqual(withoutPassword(user));
       expect(repo.deleteUser).toHaveBeenCalledWith(ID);
     });
 
@@ -257,6 +265,13 @@ describe('user.service', () => {
 
       await expect(userService.deleteUser(ID)).rejects.toThrow('Failed to delete user: Error: timeout');
     });
+
+    it('rethrows a last-Administrator error unwrapped', async () => {
+      const error = new LastAdminError();
+      repo.deleteUser.mockRejectedValue(error);
+
+      await expect(userService.deleteUser(ID)).rejects.toBe(error);
+    });
   });
 
   describe('getAllUsers', () => {
@@ -264,7 +279,7 @@ describe('user.service', () => {
       const users = [buildUser(), buildUser({ id: OTHER_ID, username: 'asmith' })];
       repo.getAllUsers.mockResolvedValue(users);
 
-      await expect(userService.getAllUsers()).resolves.toEqual(users);
+      await expect(userService.getAllUsers()).resolves.toEqual(users.map(withoutPassword));
     });
 
     it('returns an empty list when there are no users', async () => {
@@ -285,7 +300,7 @@ describe('user.service', () => {
       const user = buildUser();
       repo.getUserById.mockResolvedValue(user);
 
-      await expect(userService.getUserById(ID)).resolves.toEqual(user);
+      await expect(userService.getUserById(ID)).resolves.toEqual(withoutPassword(user));
       expect(repo.getUserById).toHaveBeenCalledWith(ID);
     });
 
@@ -325,7 +340,7 @@ describe('user.service', () => {
       const users = [buildUser({ role_id: null, role_name: null })];
       repo.getUsersWithoutRoles.mockResolvedValue(users);
 
-      await expect(userService.getUsersWithoutRoles()).resolves.toEqual(users);
+      await expect(userService.getUsersWithoutRoles()).resolves.toEqual(users.map(withoutPassword));
     });
 
     it('returns an empty list when every user has a role', async () => {

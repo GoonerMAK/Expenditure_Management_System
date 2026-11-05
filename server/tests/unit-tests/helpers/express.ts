@@ -8,6 +8,7 @@ export type MockResponse = Response & {
 };
 
 type MockRequestInit = {
+  method?: string;
   params?: Record<string, unknown>;
   body?: unknown;
   query?: Record<string, unknown>;

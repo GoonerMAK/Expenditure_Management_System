@@ -46,6 +46,8 @@ export const buildUser = (overrides: Partial<User> = {}): User => ({
   ...overrides,
 });
 
+export const withoutPassword = ({ password: _password, ...user }: User) => user;
+
 export const buildProject = (overrides: Partial<Project> = {}): Project => ({
   id: ID,
   project_name: 'Bridge Renovation',

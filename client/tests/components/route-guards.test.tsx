@@ -9,7 +9,7 @@ jest.mock('../../src/lib/use-auth');
 const mockedUseAuth = jest.mocked(useAuth);
 
 const setAuth = (user: { role_name: string } | null, loading = false) => {
-  mockedUseAuth.mockReturnValue({ user, loading });
+  mockedUseAuth.mockReturnValue({ user: user && { id: 'u1', ...user }, loading });
 };
 
 const renderAt = (element: JSX.Element) =>

@@ -1,17 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axios from 'axios';
-import Cookies from 'js-cookie';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Header from '../../src/components/header';
 import useAuth from '../../src/lib/use-auth';
 
 jest.mock('axios');
-jest.mock('js-cookie');
 jest.mock('../../src/lib/use-auth');
 
 const mockedPost = jest.mocked(axios.post);
-const mockedRemove = jest.mocked(Cookies.remove);
 const mockedUseAuth = jest.mocked(useAuth);
 
 const renderHeader = () =>
@@ -32,7 +29,7 @@ const openMenuAndLogout = async () => {
 
 describe('Header', () => {
   beforeEach(() => {
-    mockedUseAuth.mockReturnValue({ user: { username: 'jdoe' }, loading: false });
+    mockedUseAuth.mockReturnValue({ user: { id: 'u1', username: 'jdoe' }, loading: false });
   });
 
   it('greets the signed-in user by username', () => {
@@ -57,7 +54,7 @@ describe('Header', () => {
     expect(await screen.findByText('My Account')).toBeInTheDocument();
   });
 
-  it('logs out on the server, removes the cookie and navigates to /login', async () => {
+  it('logs out on the server and navigates to /login', async () => {
     mockedPost.mockResolvedValue({ data: { message: 'Logged out successfully' } });
     renderHeader();
 
@@ -65,10 +62,9 @@ describe('Header', () => {
 
     await waitFor(() => expect(screen.getByText('Login page')).toBeInTheDocument());
     expect(mockedPost).toHaveBeenCalledWith('http://localhost:4000/api/auth/logout', {}, { withCredentials: true });
-    expect(mockedRemove).toHaveBeenCalledWith('jwt');
   });
 
-  it('stays on the page and keeps the cookie when the logout request fails', async () => {
+  it('stays on the page when the logout request fails', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     const error = new Error('Network Error');
     mockedPost.mockRejectedValue(error);
@@ -77,7 +73,6 @@ describe('Header', () => {
     await openMenuAndLogout();
 
     await waitFor(() => expect(consoleError).toHaveBeenCalledWith('Failed to log out:', error));
-    expect(mockedRemove).not.toHaveBeenCalled();
     expect(screen.queryByText('Login page')).not.toBeInTheDocument();
   });
 });

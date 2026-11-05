@@ -1,11 +1,20 @@
 import prisma from '../db.js';
 import { Role } from '@prisma/client';
+import { getDefaultRole } from '../roles.js';
 
 export const createRole = async (role_name: string) => {
     return await prisma.role.create({
         data: {
             role_name,
         },
+    });
+};
+
+export const upsertRole = async (role_name: string) => {
+    return await prisma.role.upsert({
+        where: { role_name },
+        update: {},
+        create: { role_name },
     });
 };
 
@@ -23,8 +32,21 @@ export const updateRole = async (
 };
 
 export const deleteRole = async (id: string) => {
-    return await prisma.role.delete({
-        where: { id },
+    return await prisma.$transaction(async (tx) => {
+        const defaultRole = await tx.role.upsert({
+            where: { role_name: getDefaultRole() },
+            update: {},
+            create: { role_name: getDefaultRole() },
+        });
+
+        await tx.user.updateMany({
+            where: { role_id: id },
+            data: { role_id: defaultRole.id, role_name: defaultRole.role_name },
+        });
+
+        return await tx.role.delete({
+            where: { id },
+        });
     });
 };
 
@@ -41,7 +63,7 @@ export const getRoleById = async (id: string) => {
 export const getUsersByRole = async () => {
     const rolesWithUsers = await prisma.role.findMany({
         include: {
-            users: true,
+            users: { select: { username: true } },
         },
     });
 
