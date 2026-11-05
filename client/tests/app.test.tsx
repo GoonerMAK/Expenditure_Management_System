@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import { toast } from 'sonner';
 import App from '../src/App';
 import useAuth from '../src/lib/use-auth';
 
@@ -89,6 +90,20 @@ describe('App routing', () => {
     visit('/signup', 'Administrator');
 
     expect(screen.getByText('Signup page')).toBeInTheDocument();
+  });
+
+  it('shows each toast once at the top-right', async () => {
+    visit('/dashboard', 'Contributor');
+
+    act(() => {
+      toast.success('Saved');
+    });
+
+    expect(await screen.findAllByText('Saved')).toHaveLength(1);
+    const toasts = document.querySelectorAll('[data-sonner-toaster]');
+    expect(toasts).toHaveLength(1);
+    expect(toasts[0]).toHaveAttribute('data-y-position', 'top');
+    expect(toasts[0]).toHaveAttribute('data-x-position', 'right');
   });
 
   it('renders nothing for an unknown route', () => {

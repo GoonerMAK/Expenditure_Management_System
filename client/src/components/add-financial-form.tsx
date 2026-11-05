@@ -7,7 +7,6 @@ import { Check, ChevronsUpDown } from "lucide-react"
 import { cn, toOptionalAmount } from '../lib/utils';
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
-import { Toaster } from './ui/sonner';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "../components/ui/form";
 import { Input } from "./ui/input";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, } from "./ui/command"
@@ -87,7 +86,6 @@ const AddFinancialForm = () => {
     return (
 
         <div className="flex space-x-6 p-12 ml-10">
-            <Toaster position="top-right" />
             <div className="w-1/3">
 
                 <Form {...form}>

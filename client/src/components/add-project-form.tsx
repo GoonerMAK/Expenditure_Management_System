@@ -11,7 +11,6 @@ import { cn } from '../lib/utils';
 import { Button } from "../components/ui/button";
 import { Calendar } from './ui/calendar';
 import { toast } from "sonner";
-import { Toaster } from './ui/sonner';
 
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "../components/ui/form";
 import { Textarea } from './ui/textarea';
@@ -82,7 +81,6 @@ const AddProjectForm = () => {
 
     return (
         <div className="flex space-x-6 p-12 ml-10">
-            <Toaster />
             <div className="w-1/3">
 
                 <Form {...form}>

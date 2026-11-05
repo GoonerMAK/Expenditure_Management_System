@@ -10,6 +10,7 @@ import UpdateProject from './pages/update-project';
 import { Signup } from './pages/signup';
 import ProtectedRoute from './components/protected-route';
 import GuestRoute from './components/guest-route';
+import { Toaster } from './components/ui/sonner';
 
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
             <Route path="/projects/:id" element={<ProtectedRoute allowedRoles={['Read-only', 'Contributor', 'Administrator']}><UpdateProject /></ProtectedRoute>} />
             <Route path="/add-financial-info" element={<ProtectedRoute allowedRoles={['Contributor', 'Administrator']}><AddFinancial /></ProtectedRoute>} />
           </Routes>
+          <Toaster />
       </Router>
       
   );

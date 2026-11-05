@@ -11,7 +11,7 @@ import {
 } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Toaster, toast } from 'sonner';
+import { toast } from 'sonner';
 import { getServerMessage } from '../lib/utils';
 
 export function Signup() {
@@ -41,7 +41,6 @@ export function Signup() {
 
   return (
     <Card className="mx-auto max-w-sm mt-40">
-      <Toaster />
       <CardHeader>
         <CardTitle className="text-xl text-center">Sign Up</CardTitle>
         <CardDescription className="text-center">

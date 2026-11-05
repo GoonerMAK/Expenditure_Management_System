@@ -6,7 +6,6 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import {Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow, } from "../components/ui/table";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
-import { Toaster } from './ui/sonner';
 import { getServerMessage } from '../lib/utils';
 
 
@@ -43,7 +42,6 @@ const AddCategoryForm = () => {
   return (
     <div className="flex space-x-6 p-12 ml-10">
       <div className="w-1/3">
-      <Toaster/>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-col space-y-6">
             <FormField
