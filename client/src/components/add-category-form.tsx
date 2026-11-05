@@ -6,7 +6,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Table, TableBody, TableCell, TableRow } from "../components/ui/table";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
-import { getServerMessage } from '../lib/utils';
+import { getCategoryErrorMessage } from '../lib/category-errors';
+import useAuth from '../lib/use-auth';
 import SectionCard from './section-card';
 
 
@@ -20,6 +21,7 @@ interface Category {
 const AddCategoryForm = () => {
   const { data: categories = [], refetch } = useGetCategoriesQuery();
   const [addCategory, { isLoading }] = useAddCategoryMutation();
+  const { user } = useAuth();
 
   const form = useForm<Category>({
     defaultValues: {
@@ -35,8 +37,7 @@ const AddCategoryForm = () => {
       refetch();
     } catch (error) {
       console.error('Error response:', error);
-      const errorMessage = getServerMessage(error) || "Failed to create Category";
-      toast.error(`Error: ${errorMessage}`);
+      toast.error(getCategoryErrorMessage(error, user?.role_name));
     }
   };
 
