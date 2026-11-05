@@ -59,7 +59,7 @@ describe('auth.middleware isAuthenticated', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('responds 400 for a token signed with a different secret', () => {
+  it('responds 401 for a token signed with a different secret', () => {
     const token = jwt.sign({ id: ID }, 'some-other-secret');
     const req = mockRequest({ cookies: { jwt: token } });
     const res = mockResponse();
@@ -67,33 +67,33 @@ describe('auth.middleware isAuthenticated', () => {
 
     isAuthenticated(req, res, next);
 
-    expectResponse(res, 400, { message: 'Invalid token.' });
+    expectResponse(res, 401, { message: 'Invalid token.' });
     expect(next).not.toHaveBeenCalled();
     expect(req.user).toBeUndefined();
   });
 
-  it('responds 400 for an expired token', () => {
+  it('responds 401 for an expired token', () => {
     const token = jwt.sign({ id: ID, exp: Math.floor(Date.now() / 1000) - 60 }, SECRET);
     const res = mockResponse();
     const next = mockNext();
 
     isAuthenticated(mockRequest({ cookies: { jwt: token } }), res, next);
 
-    expectResponse(res, 400, { message: 'Invalid token.' });
+    expectResponse(res, 401, { message: 'Invalid token.' });
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('responds 400 for a malformed token', () => {
+  it('responds 401 for a malformed token', () => {
     const res = mockResponse();
     const next = mockNext();
 
     isAuthenticated(mockRequest({ cookies: { jwt: 'not-a-jwt' } }), res, next);
 
-    expectResponse(res, 400, { message: 'Invalid token.' });
+    expectResponse(res, 401, { message: 'Invalid token.' });
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('responds 400 for a token whose payload was tampered with', () => {
+  it('responds 401 for a token whose payload was tampered with', () => {
     const [header, , signature] = jwt.sign({ id: ID }, SECRET).split('.');
     const forgedPayload = Buffer.from(JSON.stringify({ id: 'attacker' })).toString('base64url');
     const res = mockResponse();
@@ -101,22 +101,22 @@ describe('auth.middleware isAuthenticated', () => {
 
     isAuthenticated(mockRequest({ cookies: { jwt: `${header}.${forgedPayload}.${signature}` } }), res, next);
 
-    expectResponse(res, 400, { message: 'Invalid token.' });
+    expectResponse(res, 401, { message: 'Invalid token.' });
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('responds 400 for an unsigned token using the none algorithm', () => {
+  it('responds 401 for an unsigned token using the none algorithm', () => {
     const token = jwt.sign({ id: ID }, '', { algorithm: 'none' });
     const res = mockResponse();
     const next = mockNext();
 
     isAuthenticated(mockRequest({ cookies: { jwt: token } }), res, next);
 
-    expectResponse(res, 400, { message: 'Invalid token.' });
+    expectResponse(res, 401, { message: 'Invalid token.' });
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('responds 400 when the server secret is not configured', () => {
+  it('responds 401 when the server secret is not configured', () => {
     const token = jwt.sign({ id: ID }, SECRET);
     delete process.env.SECRET;
     const res = mockResponse();
@@ -124,7 +124,7 @@ describe('auth.middleware isAuthenticated', () => {
 
     isAuthenticated(mockRequest({ cookies: { jwt: token } }), res, next);
 
-    expectResponse(res, 400, { message: 'Invalid token.' });
+    expectResponse(res, 401, { message: 'Invalid token.' });
     expect(next).not.toHaveBeenCalled();
   });
 

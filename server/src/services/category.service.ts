@@ -1,23 +1,46 @@
+import { Prisma } from '@prisma/client';
 import * as categoryRepository from '../repositories/category.repository.js';
+import { CategoryNotFoundError, DuplicateCategoryError } from '../categories.js';
+
+const isPrismaError = (error: unknown, code: string) =>
+    error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;
+
+const toCategoryError = (error: unknown, category_name?: string) => {
+    if (error instanceof DuplicateCategoryError || error instanceof CategoryNotFoundError) return error;
+    if (category_name !== undefined && isPrismaError(error, 'P2002')) return new DuplicateCategoryError(category_name);
+    if (isPrismaError(error, 'P2025')) return new CategoryNotFoundError();
+    return null;
+};
+
+const ensureNameIsFree = async (category_name: string, excludeId?: string) => {
+    const existing = await categoryRepository.findCategoryByName(category_name, excludeId);
+    if (existing) {
+        throw new DuplicateCategoryError(existing.category_name);
+    }
+};
 
 export const createCategory = async (category_name: string) => {
     try {
+        await ensureNameIsFree(category_name);
         const category = await categoryRepository.createCategory(category_name);
         return category;
     } catch (error) {
-        throw new Error(`Failed to create category: ${error}`);
+        throw toCategoryError(error, category_name) ?? new Error(`Failed to create category: ${error}`);
     }
 };
 
 export const updateCategory = async (id: string, category_name?: string) => {
     try {
+        if (category_name !== undefined) {
+            await ensureNameIsFree(category_name, id);
+        }
         const updatedCategory = await categoryRepository.updateCategory(id, category_name);
         if (!updatedCategory) {
-            throw new Error(`Category with id ${id} not found`);
+            throw new CategoryNotFoundError();
         }
         return updatedCategory;
     } catch (error) {
-        throw new Error(`Failed to update category: ${error}`);
+        throw toCategoryError(error, category_name) ?? new Error(`Failed to update category: ${error}`);
     }
 };
 
@@ -25,11 +48,11 @@ export const deleteCategory = async (id: string) => {
     try {
         const deletedCategory = await categoryRepository.deleteCategory(id);
         if (!deletedCategory) {
-            throw new Error(`Category with id ${id} not found`);
+            throw new CategoryNotFoundError();
         }
         return deletedCategory;
     } catch (error) {
-        throw new Error(`Failed to delete category: ${error}`);
+        throw toCategoryError(error) ?? new Error(`Failed to delete category: ${error}`);
     }
 };
 

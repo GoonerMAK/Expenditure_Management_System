@@ -32,6 +32,15 @@ export const getAllCategories = async () => {
     return await prisma.category.findMany();
 };
 
+export const findCategoryByName = async (category_name: string, excludeId?: string) => {
+    return await prisma.category.findFirst({
+        where: {
+            category_name: { equals: category_name, mode: 'insensitive' },
+            ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        },
+    });
+};
+
 export const getCategoryById = async (id: string) => {
     return await prisma.category.findUnique({
         where: { id },
