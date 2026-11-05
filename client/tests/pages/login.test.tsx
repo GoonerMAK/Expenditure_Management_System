@@ -1,23 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axios from 'axios';
-import Cookies from 'js-cookie';
-import { jwtDecode } from 'jwt-decode';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Login from '../../src/pages/login';
 import useAuth from '../../src/lib/use-auth';
 
 jest.mock('axios');
-jest.mock('js-cookie');
-jest.mock('jwt-decode', () => ({ jwtDecode: jest.fn() }));
 jest.mock('../../src/lib/use-auth');
 
 const mockedPost = jest.mocked(axios.post);
-const mockedSet = jest.mocked(Cookies.set);
-const mockedDecode = jest.mocked(jwtDecode);
 const mockedUseAuth = jest.mocked(useAuth);
-
-const EXP = 1798761600;
 
 const renderLogin = () =>
   render(
@@ -52,8 +44,7 @@ describe('Login page', () => {
   });
 
   it('posts the credentials with cookies enabled', async () => {
-    mockedPost.mockResolvedValue({ data: { token: 'a.b.c', user: { id: '1' } } });
-    mockedDecode.mockReturnValue({ exp: EXP });
+    mockedPost.mockResolvedValue({ data: { user: { id: '1' } } });
     renderLogin();
 
     await submit();
@@ -65,20 +56,8 @@ describe('Login page', () => {
     );
   });
 
-  it('stores the token in a cookie that expires with the token', async () => {
-    mockedPost.mockResolvedValue({ data: { token: 'a.b.c', user: { id: '1' } } });
-    mockedDecode.mockReturnValue({ exp: EXP });
-    renderLogin();
-
-    await submit();
-
-    expect(mockedDecode).toHaveBeenCalledWith('a.b.c');
-    expect(mockedSet).toHaveBeenCalledWith('jwt', 'a.b.c', { expires: new Date(EXP * 1000) });
-  });
-
   it('navigates to the dashboard after a successful login', async () => {
-    mockedPost.mockResolvedValue({ data: { token: 'a.b.c', user: { id: '1' } } });
-    mockedDecode.mockReturnValue({ exp: EXP });
+    mockedPost.mockResolvedValue({ data: { user: { id: '1' } } });
     renderLogin();
 
     await submit();
@@ -93,7 +72,7 @@ describe('Login page', () => {
     await submit();
 
     expect(await screen.findByText('Failed to sign in: Wrong Password')).toBeInTheDocument();
-    expect(mockedSet).not.toHaveBeenCalled();
+    expect(screen.queryByText('Dashboard page')).not.toBeInTheDocument();
   });
 
   it('falls back to the transport error message when there is no response', async () => {
@@ -103,19 +82,6 @@ describe('Login page', () => {
     await submit();
 
     expect(await screen.findByText('Network Error')).toBeInTheDocument();
-  });
-
-  it('shows an error and stays on the page when the token cannot be decoded', async () => {
-    mockedPost.mockResolvedValue({ data: { token: 'garbage', user: { id: '1' } } });
-    mockedDecode.mockImplementation(() => {
-      throw new Error('Invalid token specified');
-    });
-    renderLogin();
-
-    await submit();
-
-    expect(await screen.findByText('Invalid token specified')).toBeInTheDocument();
-    expect(screen.queryByText('Dashboard page')).not.toBeInTheDocument();
   });
 
   it('does not submit when the fields are empty', async () => {

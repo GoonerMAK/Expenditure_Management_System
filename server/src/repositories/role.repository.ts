@@ -63,7 +63,7 @@ export const getRoleById = async (id: string) => {
 export const getUsersByRole = async () => {
     const rolesWithUsers = await prisma.role.findMany({
         include: {
-            users: true,
+            users: { select: { username: true } },
         },
     });
 

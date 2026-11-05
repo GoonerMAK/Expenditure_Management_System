@@ -43,7 +43,7 @@ describe('auth.controller', () => {
   });
 
   describe('logIn', () => {
-    it('sets an httpOnly jwt cookie for three days and responds 200 with user and token', async () => {
+    it('sets an httpOnly jwt cookie for three days and responds 200 with only the user', async () => {
       const user = buildUser();
       service.logIn.mockResolvedValue({ user, token: 'signed.jwt.token' });
       const res = mockResponse();
@@ -52,7 +52,8 @@ describe('auth.controller', () => {
 
       expect(service.logIn).toHaveBeenCalledWith('jdoe@example.com', 'secret123');
       expect(res.cookie).toHaveBeenCalledWith('jwt', 'signed.jwt.token', { httpOnly: true, maxAge: THREE_DAYS_MS });
-      expectResponse(res, 200, { user, token: 'signed.jwt.token' });
+      expectResponse(res, 200, { user });
+      expect(res.json).not.toHaveBeenCalledWith(expect.objectContaining({ token: expect.anything() }));
     });
 
     it('ignores a username sent with the credentials', async () => {

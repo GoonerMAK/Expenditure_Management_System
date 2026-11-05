@@ -22,7 +22,7 @@ export const logIn = async (req: Request<unknown, unknown, AuthLogin, unknown>, 
 
         res.cookie('jwt', token, { httpOnly: true, maxAge: 3 * 24 * 60 * 60 * 1000, });
 
-        res.status(200).json({user, token});
+        res.status(200).json({ user });
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
