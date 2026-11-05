@@ -88,7 +88,7 @@ const SingleProject = () => {
                 ...getValues(),
                 project_name: project.project_name,
                 description: project.description ?? '',
-                category_id: project.category_id,
+                category_id: project.category_id ?? '',
                 category_name: project.category_name,
                 start_date: new Date(project.start_date).toISOString(),
                 end_date: new Date(project.end_date).toISOString(),
@@ -120,8 +120,8 @@ const SingleProject = () => {
         const projectData: Partial<Project> = {
             project_name: data.project_name,
             description: data.description,
-            category_id: data.category_id,
-            category_name: data.category_name,
+            category_id: data.category_id || undefined,
+            category_name: data.category_id ? data.category_name : undefined,
             start_date: data.start_date,
             end_date: data.end_date,
         };
@@ -221,7 +221,7 @@ const SingleProject = () => {
                                                 className="w-[200px] justify-between flex"
                                                 disabled={!editMode}
                                             >
-                                                {form.getValues("category_name") || "Select category"}
+                                                {form.getValues("category_name") || (editMode ? "Select category" : "Uncategorised")}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </PopoverTrigger>

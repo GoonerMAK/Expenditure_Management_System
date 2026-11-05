@@ -182,6 +182,26 @@ describe('SingleProject (single project card)', () => {
     });
   });
 
+  it('shows Uncategorised for a project without a category', async () => {
+    setup({ projectQuery: { data: { ...project, category_id: null, category_name: '' } } });
+
+    expect(await screen.findByRole('combobox')).toHaveTextContent('Uncategorised');
+  });
+
+  it('keeps a project without a category uncategorised when saving other changes', async () => {
+    const { updateProject, user } = setup({ projectQuery: { data: { ...project, category_id: null, category_name: '' } } });
+    await waitFor(() => expect(screen.getByLabelText('Year')).toHaveValue(2026));
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByRole('combobox')).toHaveTextContent('Select category');
+    await user.click(screen.getByRole('button', { name: 'Update' }));
+
+    await waitFor(() => expect(updateProject).toHaveBeenCalled());
+    const { data } = updateProject.mock.calls[0][0];
+    expect(data.category_id).toBeUndefined();
+    expect(data.category_name).toBeUndefined();
+  });
+
   it('reports a failure when either update is rejected', async () => {
     const { user } = setup({ updateFinancial: rejectingTrigger({ status: 500 }) });
     await waitFor(() => expect(screen.getByLabelText('Year')).toHaveValue(2026));

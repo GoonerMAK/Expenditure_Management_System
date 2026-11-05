@@ -5,6 +5,14 @@ export interface Category {
     updated_at: string;
 }
 
+export interface CategoryUsage {
+    category_id: string;
+    category_name: string;
+    project_count: number;
+    projects: { id: string; project_name: string }[];
+    financial_record_count: number;
+}
+
 export interface FinancialData {
     year: number;
     month: number;
@@ -19,7 +27,7 @@ export interface Project {
     id: string;
     project_name: string;
     description: string;
-    category_id: string;
+    category_id: string | null;
     category_name: string;
     start_date: string | Date;
     end_date: string | Date;
@@ -87,7 +95,7 @@ export interface BudgetSummary {
 }
 
 export interface CategoryBudget {
-    category_id: string;
+    category_id: string | null;
     category_name: string;
     budget: number;
     spent: number;

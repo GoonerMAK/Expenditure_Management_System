@@ -186,6 +186,73 @@ describe('RTK Query APIs', () => {
       );
       expect(requests.filter((request) => request.method === 'GET')).toHaveLength(2);
     });
+
+    it('fetches what uses a category', async () => {
+      const { requests } = mockServer(() => ({ body: { project_count: 0 } }));
+      const store = makeStore();
+
+      await store.dispatch(categoryApi.endpoints.getCategoryUsage.initiate('c1'));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}categories/c1/usage`, method: 'GET' }));
+    });
+
+    it('renames a category with a PUT and refetches categories and projects', async () => {
+      const { requests } = mockServer(({ method, url }) =>
+        method !== 'GET' ? { body: { id: 'c1' } } : url.includes('projects') ? { body: { data: [], pagination: {} } } : { body: [] },
+      );
+      const store = makeStore();
+      store.dispatch(categoryApi.endpoints.getCategories.initiate());
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      await store.dispatch(categoryApi.endpoints.updateCategory.initiate({ id: 'c1', category_name: 'Tech' }));
+      await flush();
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      expect(requests).toContainEqual(
+        expect.objectContaining({ url: `${BASE}categories/c1`, method: 'PUT', body: { category_name: 'Tech' } }),
+      );
+      expect(urlsFor(requests, 'categories')).toHaveLength(2);
+      expect(urlsFor(requests, 'projects?offset=0&limit=6')).toHaveLength(2);
+    });
+
+    it('deletes a category with a DELETE and refetches categories and projects', async () => {
+      const { requests } = mockServer(({ method, url }) =>
+        method !== 'GET' ? { body: { id: 'c1' } } : url.includes('projects') ? { body: { data: [], pagination: {} } } : { body: [] },
+      );
+      const store = makeStore();
+      store.dispatch(categoryApi.endpoints.getCategories.initiate());
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      await store.dispatch(categoryApi.endpoints.deleteCategory.initiate('c1'));
+      await flush();
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      expect(requests).toContainEqual(expect.objectContaining({ url: `${BASE}categories/c1`, method: 'DELETE' }));
+      expect(urlsFor(requests, 'categories')).toHaveLength(2);
+      expect(urlsFor(requests, 'projects?offset=0&limit=6')).toHaveLength(2);
+    });
+
+    it('keeps the project cache when a rename fails', async () => {
+      const { requests } = mockServer(({ method, url }) =>
+        method !== 'GET'
+          ? { status: 409, body: { message: 'taken' } }
+          : url.includes('projects') ? { body: { data: [], pagination: {} } } : { body: [] },
+      );
+      const store = makeStore();
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      await store.dispatch(categoryApi.endpoints.updateCategory.initiate({ id: 'c1', category_name: 'Tech' }));
+      await flush();
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      expect(urlsFor(requests, 'projects?offset=0&limit=6')).toHaveLength(1);
+    });
   });
 
   describe('financialDataApi', () => {
