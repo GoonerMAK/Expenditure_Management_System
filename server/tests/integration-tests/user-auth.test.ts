@@ -30,6 +30,7 @@ describe("---------------- user auth routes ----------------", () => {
 
             expect(response.status).toBe(201);
             expect(response.body).toHaveProperty('user');
+            expect(response.body.user).not.toHaveProperty('password');
             
             createdUserId = response.body.user.id;
 
@@ -54,8 +55,10 @@ describe("---------------- user auth routes ----------------", () => {
                 });
 
             expect(response.status).toBe(200);
-            expect(response.body).toHaveProperty('token');
+            expect(response.body).not.toHaveProperty('token');
+            expect(response.body.user).not.toHaveProperty('password');
             expect(response.body.user.email).toBe("testuser@example.com");
+            expect(response.headers['set-cookie'][0]).toMatch(/^jwt=.+HttpOnly/);
         });
 
         it("should return 400 for invalid credentials", async () => {
@@ -75,6 +78,7 @@ describe("---------------- user auth routes ----------------", () => {
             const response = await request.get('/api/auth/user')
                 .set('Cookie', `jwt=${token}`);
             expect(response.status).toBe(200);
+            expect(response.body.user).not.toHaveProperty('password');
         });
 
         it("should return 401 for unauthenticated request", async () => {
@@ -129,6 +133,8 @@ describe("---------------- user auth routes ----------------", () => {
                 .set('Cookie', `jwt=${token}`);
             expect(response.status).toBe(200);
             expect(response.body).toBeInstanceOf(Array);
+            expect(response.body.length).toBeGreaterThan(0);
+            response.body.forEach((user: object) => expect(user).not.toHaveProperty('password'));
         });
     });
 
@@ -141,6 +147,7 @@ describe("---------------- user auth routes ----------------", () => {
             expect(response.status).toBe(200);
             expect(response.body).toHaveProperty('id');
             expect(response.body).toHaveProperty('email');
+            expect(response.body).not.toHaveProperty('password');
         });
 
         it("should return 400 for invalid user ID", async () => {
