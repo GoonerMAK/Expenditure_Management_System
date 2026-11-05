@@ -3,7 +3,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Cookies from 'js-cookie';
 import useAuth from '../lib/use-auth';
 
 const Header = () => {
@@ -15,7 +14,6 @@ const Header = () => {
   const handleLogout = async () => {
     try {
       await axios.post('http://localhost:4000/api/auth/logout', {}, { withCredentials: true });
-      Cookies.remove('jwt'); 
       navigate('/login');
     } catch (error) {
       console.error('Failed to log out:', error);
