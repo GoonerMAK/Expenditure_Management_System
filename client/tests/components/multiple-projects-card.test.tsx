@@ -131,12 +131,12 @@ describe('ShowProjects (multiple projects card)', () => {
     expect(screen.getByText('Start Date: Not specified')).toBeInTheDocument();
   });
 
-  it('shows a placeholder for a missing category name', () => {
-    mockedGetProjects.mockReturnValue(queryResult({ data: page([project({ category_name: '' })]) }));
+  it('shows Uncategorised for a project whose category was deleted', () => {
+    mockedGetProjects.mockReturnValue(queryResult({ data: page([project({ category_id: null, category_name: '' })]) }));
 
     renderCard();
 
-    expect(screen.getByText('Category: Loading...')).toBeInTheDocument();
+    expect(screen.getByText('Category: Uncategorised')).toBeInTheDocument();
   });
 
   it('links each project to its detail page', async () => {

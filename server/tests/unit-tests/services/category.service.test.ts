@@ -175,6 +175,40 @@ describe('category.service', () => {
     });
   });
 
+  describe('getCategoryUsage', () => {
+    it('returns the projects and financial record count that use the category', async () => {
+      const projects = [{ id: 'p1', project_name: 'Data Platform' }, { id: 'p2', project_name: 'Mobile App' }];
+      repo.getCategoryUsage.mockResolvedValue({ id: ID, category_name: 'Tech', projects, financial_record_count: 14 });
+
+      await expect(categoryService.getCategoryUsage(ID)).resolves.toEqual({
+        category_id: ID,
+        category_name: 'Tech',
+        project_count: 2,
+        projects,
+        financial_record_count: 14,
+      });
+      expect(repo.getCategoryUsage).toHaveBeenCalledWith(ID);
+    });
+
+    it('reports an unused category', async () => {
+      repo.getCategoryUsage.mockResolvedValue({ id: ID, category_name: 'Tech', projects: [], financial_record_count: 0 });
+
+      await expect(categoryService.getCategoryUsage(ID)).resolves.toMatchObject({ project_count: 0, financial_record_count: 0 });
+    });
+
+    it('throws a not-found error when the category does not exist', async () => {
+      repo.getCategoryUsage.mockResolvedValue(null);
+
+      await expect(categoryService.getCategoryUsage(ID)).rejects.toThrow(CategoryNotFoundError);
+    });
+
+    it('wraps repository errors', async () => {
+      repo.getCategoryUsage.mockRejectedValue(new Error('timeout'));
+
+      await expect(categoryService.getCategoryUsage(ID)).rejects.toThrow('Failed to fetch category usage: Error: timeout');
+    });
+  });
+
   describe('getAllCategories', () => {
     it('returns every category', async () => {
       const categories = [buildCategory(), buildCategory({ id: OTHER_ID, category_name: 'Healthcare' })];

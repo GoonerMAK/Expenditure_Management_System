@@ -11,3 +11,7 @@ export class CategoryNotFoundError extends Error {
 }
 
 export const getCategorySaveFailedMessage = () => 'Something went wrong while saving the category. Try again.';
+
+export const getCategoryUsageFailedMessage = () => "Couldn't check what uses this category. Try again.";
+
+export const getUncategorisedLabel = () => 'Uncategorised';

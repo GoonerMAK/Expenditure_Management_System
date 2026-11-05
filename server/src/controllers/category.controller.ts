@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as categoryService from '../services/category.service.js';
 import { Category, CategoryParams } from '../validators/category.validator.js';
-import { CategoryNotFoundError, DuplicateCategoryError, getCategorySaveFailedMessage } from '../categories.js';
+import { CategoryNotFoundError, DuplicateCategoryError, getCategorySaveFailedMessage, getCategoryUsageFailedMessage } from '../categories.js';
 
 const sendCategoryWriteError = (res: Response, error: Error) => {
     if (error instanceof DuplicateCategoryError) {
@@ -42,6 +42,21 @@ export const deleteCategory = async (req: Request<CategoryParams, unknown, unkno
         res.status(200).json(deletedCategory);
     } catch (error) {
         sendCategoryWriteError(res, error);
+    }
+};
+
+export const getCategoryUsage = async (req: Request<CategoryParams, unknown, unknown, unknown>, res: Response) => {
+    const { id } = req.params;
+    try {
+        const usage = await categoryService.getCategoryUsage(id);
+        res.status(200).json(usage);
+    } catch (error) {
+        if (error instanceof CategoryNotFoundError) {
+            res.status(404).json({ message: error.message });
+        } else {
+            console.error('Category usage lookup failed:', error);
+            res.status(500).json({ message: getCategoryUsageFailedMessage() });
+        }
     }
 };
 

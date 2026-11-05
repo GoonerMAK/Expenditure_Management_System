@@ -337,6 +337,19 @@ describe('project.service', () => {
       ]);
     });
 
+    it('groups projects without a category under Uncategorised', async () => {
+      repo.getProjectsWithFinancialData.mockResolvedValue([
+        { id: ID, project_name: 'Bridge', category_id: null, category: null, financial_data: [entry(300, 1000, null)] },
+        { id: OTHER_ID, project_name: 'School', ...inCategory('c1', 'Education'), financial_data: [entry(50, 500, null)] },
+        { id: 'p3', project_name: 'Tunnel', category_id: null, category: null, financial_data: [entry(100, 200, null)] },
+      ]);
+
+      await expect(projectService.getBudgetByCategory()).resolves.toEqual([
+        { category_id: 'c1', category_name: 'Education', budget: 500, spent: 50 },
+        { category_id: null, category_name: 'Uncategorised', budget: 1200, spent: 400 },
+      ]);
+    });
+
     it('returns an empty list when there are no projects', async () => {
       repo.getProjectsWithFinancialData.mockResolvedValue([]);
 

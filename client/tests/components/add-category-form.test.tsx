@@ -14,6 +14,9 @@ jest.mock('../../src/lib/use-auth');
 jest.mock('../../src/redux/category-api', () => ({
   useGetCategoriesQuery: jest.fn(),
   useAddCategoryMutation: jest.fn(),
+  useUpdateCategoryMutation: jest.fn(() => [jest.fn(), { isLoading: false }]),
+  useDeleteCategoryMutation: jest.fn(() => [jest.fn(), { isLoading: false }]),
+  useGetCategoryUsageQuery: jest.fn(() => ({ isLoading: true })),
 }));
 
 const mockedGetCategories = jest.mocked(useGetCategoriesQuery);
@@ -25,13 +28,13 @@ const categories = [
   { id: 'c2', category_name: 'Healthcare', created_at: '', updated_at: '' },
 ];
 
-type SetupOptions = { trigger?: jest.Mock; isLoading?: boolean; data?: typeof categories };
+type SetupOptions = { trigger?: jest.Mock; isLoading?: boolean; data?: typeof categories; role?: string };
 
 const setup = (options: SetupOptions = {}) => {
-  const { trigger = resolvingTrigger({ id: 'c3' }), isLoading = false } = options;
+  const { trigger = resolvingTrigger({ id: 'c3' }), isLoading = false, role = 'Read-only' } = options;
   const data = 'data' in options ? options.data : categories;
   const refetch = jest.fn();
-  mockedUseAuth.mockReturnValue({ user: { id: 'u1', role_name: 'Read-only' }, loading: false } as never);
+  mockedUseAuth.mockReturnValue({ user: { id: 'u1', role_name: role }, loading: false } as never);
   mockedGetCategories.mockReturnValue(queryResult({ data, refetch }));
   mockedAddCategory.mockReturnValue(mutationResult(trigger, { isLoading }));
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -41,6 +44,20 @@ const setup = (options: SetupOptions = {}) => {
 };
 
 describe('AddCategoryForm', () => {
+  it('shows rename and delete buttons to a Contributor', () => {
+    setup({ role: 'Contributor' });
+
+    expect(screen.getByRole('button', { name: 'Rename Infrastructure' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Infrastructure' })).toBeInTheDocument();
+  });
+
+  it('hides rename and delete buttons from a Read-only user', () => {
+    setup();
+
+    expect(screen.queryByRole('button', { name: /^Rename / })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Delete / })).not.toBeInTheDocument();
+  });
+
   it('lists the existing categories', () => {
     setup();
 

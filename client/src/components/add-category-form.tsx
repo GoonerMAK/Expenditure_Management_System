@@ -3,12 +3,15 @@ import { useGetCategoriesQuery, useAddCategoryMutation } from '../redux/category
 
 import { Button } from "../components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "../components/ui/form";
-import { Table, TableBody, TableCell, TableRow } from "../components/ui/table";
+import { Table } from "../components/ui/table";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import { getCategoryErrorMessage } from '../lib/category-errors';
 import useAuth from '../lib/use-auth';
 import SectionCard from './section-card';
+import CategoryList from './category-list';
+
+const MANAGER_ROLES = ['Contributor', 'Administrator'];
 
 
 interface Category {
@@ -22,6 +25,7 @@ const AddCategoryForm = () => {
   const { data: categories = [], refetch } = useGetCategoriesQuery();
   const [addCategory, { isLoading }] = useAddCategoryMutation();
   const { user } = useAuth();
+  const canManage = MANAGER_ROLES.includes(user?.role_name ?? '');
 
   const form = useForm<Category>({
     defaultValues: {
@@ -72,13 +76,7 @@ const AddCategoryForm = () => {
           <p className="text-sm text-muted-foreground">No categories yet</p>
         ) : (
           <Table>
-            <TableBody>
-              {categories.map((category) => (
-                <TableRow key={category.id} className="border-section">
-                  <TableCell>{category.category_name}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
+            <CategoryList categories={categories} canManage={canManage} roleName={user?.role_name} />
           </Table>
         )}
       </SectionCard>

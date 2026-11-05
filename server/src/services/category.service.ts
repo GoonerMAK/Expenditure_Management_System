@@ -56,6 +56,24 @@ export const deleteCategory = async (id: string) => {
     }
 };
 
+export const getCategoryUsage = async (id: string) => {
+    try {
+        const usage = await categoryRepository.getCategoryUsage(id);
+        if (!usage) {
+            throw new CategoryNotFoundError();
+        }
+        return {
+            category_id: usage.id,
+            category_name: usage.category_name,
+            project_count: usage.projects.length,
+            projects: usage.projects,
+            financial_record_count: usage.financial_record_count,
+        };
+    } catch (error) {
+        throw toCategoryError(error) ?? new Error(`Failed to fetch category usage: ${error}`);
+    }
+};
+
 export const getAllCategories = async () => {
     try {
         const categories = await categoryRepository.getAllCategories();

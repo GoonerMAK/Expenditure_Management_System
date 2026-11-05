@@ -76,7 +76,7 @@ const ShowProjects = () => {
               </div>
               <p className="text-sm text-muted-foreground mb-2">{project.description}</p>
               <p className="text-sm text-muted-foreground">
-                Category: {project.category_name || 'Loading...'}
+                Category: {project.category_name || 'Uncategorised'}
               </p>
               <p className="text-sm text-muted-foreground">
                 Created by: {users.find(user => user.id === project.created_by_id)?.username || 'N/A'}

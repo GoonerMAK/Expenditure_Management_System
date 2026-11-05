@@ -10,5 +10,6 @@ categoryRouter.post('/categories', isAuthenticated, authorizeRoles('Contributor'
 categoryRouter.put('/categories/:id', isAuthenticated, authorizeRoles('Contributor', 'Administrator'), validateParams(categoryParamsSchema), validateRequest(categorySchema), categoryController.updateCategory);
 categoryRouter.delete('/categories/:id', isAuthenticated, authorizeRoles('Contributor', 'Administrator'), validateParams(categoryParamsSchema), categoryController.deleteCategory);
 categoryRouter.get('/categories', isAuthenticated, categoryController.getAllCategories);
+categoryRouter.get('/categories/:id/usage', isAuthenticated, authorizeRoles('Contributor', 'Administrator'), validateParams(categoryParamsSchema), categoryController.getCategoryUsage);
 categoryRouter.get('/categories/:id', isAuthenticated, validateParams(categoryParamsSchema), categoryController.getCategoryById);
 
