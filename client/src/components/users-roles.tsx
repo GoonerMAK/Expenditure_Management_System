@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useForm } from "react-hook-form";
-import axios from 'axios';
 
 import { Button } from "../components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "../components/ui/form";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger, } from "./ui/collapsible"
-import { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow, } from "../components/ui/table";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow, } from "../components/ui/table";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, } from "./ui/command"
 import { Popover, PopoverContent, PopoverTrigger, } from "./ui/popover";
-import { Check, ChevronsUpDown, CalendarIcon } from "lucide-react"
-import { cn } from '../lib/utils';
+import { Check, ChevronsUpDown } from "lucide-react"
+import { cn, getServerMessage } from '../lib/utils';
 
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
-import { Toaster } from './ui/sonner';
 
 import {useGetRolesQuery, useAddRoleMutation, useGetUsersByRolesQuery, useGetAssignedRolesByUserIdQuery, useGetUnassignedRolesByUserIdQuery}  from '../redux/role-api';
 import { useGetUsernamesQuery, useUpdateUserMutation } from '../redux/user-api';
@@ -75,7 +73,6 @@ const UserRoles = () => {
     mode: 'onSubmit',
   });
 
-  const { setValue: setAddRoleValue } = addRoleForm;
 
   const { setValue: setSelectRoleValueAssign } = selectRoleFormAssign;
   const { setValue: setSelectUsernameAssign } = selectRoleFormAssign;
@@ -86,13 +83,13 @@ const UserRoles = () => {
   
   const { data: rolesData, refetch: refetchRoles } = useGetRolesQuery();
   const { data: rolesWithUsersData, refetch: refetchRolesWithUsers } = useGetUsersByRolesQuery();
-  const { data: usernamesData, refetch: refetchUsernames } = useGetUsernamesQuery();
+  const { data: usernamesData } = useGetUsernamesQuery();
 
   const [addRole] = useAddRoleMutation();
   const [updateUser] = useUpdateUserMutation();
 
-  const { data: unassignedRolesData } = useGetUnassignedRolesByUserIdQuery(selectedUserIdAssign);
-  const { data: assignedRolesData } = useGetAssignedRolesByUserIdQuery(selectedUserIdRevoke);
+  const { data: unassignedRolesData } = useGetUnassignedRolesByUserIdQuery(selectedUserIdAssign, { skip: !selectedUserIdAssign });
+  const { data: assignedRolesData } = useGetAssignedRolesByUserIdQuery(selectedUserIdRevoke, { skip: !selectedUserIdRevoke });
  
 
   useEffect(() => {
@@ -140,7 +137,7 @@ const UserRoles = () => {
       setTimeout(() => {
         window.location.reload();
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       toast.error('Error Creating Role ' + error);
       console.error('Error response:', error);
     }
@@ -177,8 +174,8 @@ const UserRoles = () => {
       setTimeout(() => {
         window.location.reload(); 
       }, 2000);
-    } catch (error: any) {
-      toast.error('Error assigning role');
+    } catch (error) {
+      toast.error(getServerMessage(error) || 'Error assigning role');
       console.error('Error response:', error);
     }
   };
@@ -206,8 +203,8 @@ const UserRoles = () => {
       setTimeout(() => {
         window.location.reload(); 
       }, 3000);
-    } catch (error: any) {
-      toast.error('Error revoking role');
+    } catch (error) {
+      toast.error(getServerMessage(error) || 'Error revoking role');
       console.error('Error response:', error);
     }
   };
@@ -215,7 +212,6 @@ const UserRoles = () => {
 
   return (
     <div className="flex space-x-6 p-12 ml-10">
-      <Toaster />
 
       <div className="w-1/3">
 
@@ -255,7 +251,7 @@ const UserRoles = () => {
           <FormField
               control={selectRoleFormAssign.control}
               name="username"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className=''>
                   <FormLabel>Username</FormLabel>
                   <Popover open={openUsernameAssign} onOpenChange={setOpenUsernameAssign}>
@@ -315,7 +311,7 @@ const UserRoles = () => {
             <FormField
               control={selectRoleFormAssign.control}
               name="role_name"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className=''>
                   <FormLabel>Role Name</FormLabel>
                   <Popover open={openRoleAssign} onOpenChange={setOpenRoleAssign}>
@@ -383,7 +379,7 @@ const UserRoles = () => {
           <FormField
               control={selectRoleFormRevoke.control}
               name="username"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className=''>
                   <FormLabel>Username</FormLabel>
                   <Popover open={openUsernameRevoke} onOpenChange={setOpenUsernameRevoke}>
@@ -444,7 +440,7 @@ const UserRoles = () => {
             <FormField
               control={selectRoleFormRevoke.control}
               name="role_name"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className=''>
                   <FormLabel>Role Name</FormLabel>
                   <Popover open={openRoleRevoke} onOpenChange={setOpenRoleRevoke}>
@@ -518,22 +514,19 @@ const UserRoles = () => {
           <TableBody>
             {roles.map((role) => (
               <TableRow key={role.id}>
-                <Collapsible>
-                  <CollapsibleTrigger><TableCell>{role.role_name}</TableCell></CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <Table>
-                      <TableBody>
-                        <TableRow className='flex flex-col'>
-                          <TableHead className="text-center text-s">List of users under this role</TableHead>
-                          {rolesWithUsers.find(r => r.role_name === role.role_name)?.users.map(user => (
-                            <TableCell className="py-1" key={user}>{user}</TableCell>
-                          )) || <TableCell className="py-1">No users found</TableCell>}
-                        </TableRow>
-                      </TableBody>
-                      <br></br>
-                    </Table>
-                  </CollapsibleContent>
-                </Collapsible>
+                <TableCell>
+                  <Collapsible>
+                    <CollapsibleTrigger>{role.role_name}</CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <p className="text-center text-s font-medium text-muted-foreground mt-2">List of users under this role</p>
+                      <ul>
+                        {rolesWithUsers.find(r => r.role_name === role.role_name)?.users.map(user => (
+                          <li className="py-1" key={user}>{user}</li>
+                        )) || <li className="py-1">No users found</li>}
+                      </ul>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -3,10 +3,15 @@ import { useGetCategoriesQuery, useAddCategoryMutation } from '../redux/category
 
 import { Button } from "../components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "../components/ui/form";
-import {Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow, } from "../components/ui/table";
+import { Table } from "../components/ui/table";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
-import { Toaster } from './ui/sonner';
+import { getCategoryErrorMessage } from '../lib/category-errors';
+import useAuth from '../lib/use-auth';
+import SectionCard from './section-card';
+import CategoryList from './category-list';
+
+const MANAGER_ROLES = ['Contributor', 'Administrator'];
 
 
 interface Category {
@@ -19,6 +24,8 @@ interface Category {
 const AddCategoryForm = () => {
   const { data: categories = [], refetch } = useGetCategoriesQuery();
   const [addCategory, { isLoading }] = useAddCategoryMutation();
+  const { user } = useAuth();
+  const canManage = MANAGER_ROLES.includes(user?.role_name ?? '');
 
   const form = useForm<Category>({
     defaultValues: {
@@ -32,17 +39,15 @@ const AddCategoryForm = () => {
       console.log('Server response:', response);
       toast.success('Successfully created Category');
       refetch();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error response:', error);
-      const errorMessage = error?.data?.message || "Failed to create Category";
-      toast.error(`Error: ${errorMessage}`);
+      toast.error(getCategoryErrorMessage(error, user?.role_name));
     }
   };
 
   return (
-    <div className="flex space-x-6 p-12 ml-10">
-      <div className="w-1/3">
-      <Toaster/>
+    <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-start lg:p-12">
+      <SectionCard title="Add a category" className="lg:w-1/3">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-col space-y-6">
             <FormField
@@ -64,24 +69,17 @@ const AddCategoryForm = () => {
             <Button type="submit" disabled={isLoading}>Submit</Button>
           </form>
         </Form>
-      </div>
+      </SectionCard>
 
-              
-      <Table className="ml-60 w-1/2">
-        <TableCaption></TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-center text-xl">A list of your existing Categories</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {categories.map((category) => (
-            <TableRow key={category.id}>
-              <TableCell>{category.category_name}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <SectionCard title="Existing categories" className="lg:flex-1">
+        {categories.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No categories yet</p>
+        ) : (
+          <Table>
+            <CategoryList categories={categories} canManage={canManage} roleName={user?.role_name} />
+          </Table>
+        )}
+      </SectionCard>
     </div>
   );
 };

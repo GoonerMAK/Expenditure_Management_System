@@ -1,5 +1,6 @@
 import * as userController from '../../../src/controllers/user.controller.js';
 import * as userService from '../../../src/services/user.service.js';
+import { LastAdminError } from '../../../src/roles.js';
 import { buildUser, ID, OTHER_ID } from '../helpers/factories.js';
 import { expectResponse, mockRequest, mockResponse } from '../helpers/express.js';
 
@@ -123,6 +124,15 @@ describe('user.controller', () => {
       expectResponse(res, 500, { error: 'boom' });
     });
 
+    it('responds 409 when the change would remove the last Administrator', async () => {
+      service.updateUser.mockRejectedValue(new LastAdminError());
+      const res = mockResponse();
+
+      await userController.updateUser(mockRequest({ params: { id: ID }, body: { data: { role_name: 'Read-only' } } }), res);
+
+      expectResponse(res, 409, { message: 'The last Administrator cannot be demoted or deleted.' });
+    });
+
     it('rejects when body.data is missing because destructuring happens outside the try block', async () => {
       const res = mockResponse();
 
@@ -160,6 +170,15 @@ describe('user.controller', () => {
       await userController.deleteUser(mockRequest({ params: { id: ID } }), res);
 
       expectResponse(res, 500, { error: 'boom' });
+    });
+
+    it('responds 409 when deleting the last Administrator', async () => {
+      service.deleteUser.mockRejectedValue(new LastAdminError());
+      const res = mockResponse();
+
+      await userController.deleteUser(mockRequest({ params: { id: ID } }), res);
+
+      expectResponse(res, 409, { message: 'The last Administrator cannot be demoted or deleted.' });
     });
   });
 

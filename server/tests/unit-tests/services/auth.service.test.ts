@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import * as authService from '../../../src/services/auth.service.js';
 import * as authRepository from '../../../src/repositories/auth.repository.js';
 import * as userRepository from '../../../src/repositories/user.repository.js';
-import { buildUser, ID } from '../helpers/factories.js';
+import { buildUser, ID, withoutPassword } from '../helpers/factories.js';
 
 jest.mock('../../../src/repositories/auth.repository.js');
 jest.mock('../../../src/repositories/user.repository.js');
@@ -40,7 +40,7 @@ describe('auth.service', () => {
   });
 
   describe('signUp', () => {
-    it('hashes the password with a 10-round salt and returns the new user', async () => {
+    it('hashes the password with a 10-round salt and returns the new user without it', async () => {
       const user = buildUser({ password: HASHED });
       userRepo.getUserByEmail.mockResolvedValue(null);
       userRepo.getUserByUsername.mockResolvedValue(null);
@@ -48,7 +48,10 @@ describe('auth.service', () => {
       hash.mockResolvedValue(HASHED);
       authRepo.signUp.mockResolvedValue(user);
 
-      await expect(authService.signUp('jdoe@example.com', 'secret123', 'jdoe')).resolves.toEqual({ user });
+      const result = await authService.signUp('jdoe@example.com', 'secret123', 'jdoe');
+
+      expect(result).toEqual({ user: withoutPassword(user) });
+      expect(result.user).not.toHaveProperty('password');
       expect(genSalt).toHaveBeenCalledWith(10);
       expect(hash).toHaveBeenCalledWith('secret123', SALT);
       expect(authRepo.signUp).toHaveBeenCalledWith('jdoe@example.com', HASHED, 'jdoe');
@@ -105,16 +108,16 @@ describe('auth.service', () => {
   });
 
   describe('logIn', () => {
-    it('returns the user and a 3-day token signed with the user id', async () => {
+    it('returns the user without the password and a 3-day token signed with the user id', async () => {
       const user = buildUser({ password: HASHED });
       userRepo.getUserByEmail.mockResolvedValue(user);
       compare.mockResolvedValue(true);
       sign.mockReturnValue('signed.jwt.token');
 
-      await expect(authService.logIn('jdoe@example.com', 'secret123')).resolves.toEqual({
-        user,
-        token: 'signed.jwt.token',
-      });
+      const result = await authService.logIn('jdoe@example.com', 'secret123');
+
+      expect(result).toEqual({ user: withoutPassword(user), token: 'signed.jwt.token' });
+      expect(result.user).not.toHaveProperty('password');
       expect(compare).toHaveBeenCalledWith('secret123', HASHED);
       expect(sign).toHaveBeenCalledWith({ id: ID }, SECRET, { expiresIn: '3d' });
     });
@@ -157,11 +160,14 @@ describe('auth.service', () => {
   });
 
   describe('getAuthenticatedUser', () => {
-    it('returns the user for the given id', async () => {
+    it('returns the user for the given id without the password', async () => {
       const user = buildUser();
       authRepo.getUserById.mockResolvedValue(user);
 
-      await expect(authService.getAuthenticatedUser(ID)).resolves.toEqual(user);
+      const result = await authService.getAuthenticatedUser(ID);
+
+      expect(result).toEqual(withoutPassword(user));
+      expect(result).not.toHaveProperty('password');
       expect(authRepo.getUserById).toHaveBeenCalledWith(ID);
     });
 

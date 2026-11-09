@@ -61,7 +61,7 @@ const setup = ({
   updateProject = resolvingTrigger({}),
   updateFinancial = resolvingTrigger({}),
 }: SetupOptions = {}) => {
-  mockedUseAuth.mockReturnValue({ user: { role_name: role }, loading: false });
+  mockedUseAuth.mockReturnValue({ user: { id: 'u1', role_name: role }, loading: false });
   mockedGetProject.mockReturnValue(queryResult(projectQuery));
   mockedGetFinancial.mockReturnValue(queryResult(financialQuery));
   mockedGetCategories.mockReturnValue(queryResult({ data: [{ id: 'c1', category_name: 'Infrastructure' }] }));
@@ -130,6 +130,15 @@ describe('SingleProject (single project card)', () => {
     expect(screen.getByLabelText('Description')).toHaveValue('Renovate the river bridge');
   });
 
+  it('shows an empty description when the project has none', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    setup({ projectQuery: { data: { ...project, description: null } } });
+
+    await waitFor(() => expect(screen.getByLabelText('Project Name')).toHaveValue('Bridge Renovation'));
+    expect(screen.getByLabelText('Description')).toHaveValue('');
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
   it('starts read-only with no Update button', () => {
     setup();
 
@@ -171,6 +180,26 @@ describe('SingleProject (single project card)', () => {
       id: 'p1',
       data: { year: 2026, month: 4, expenditure: 2000.25, initial_budget: 10000, revised_budget: 12000 },
     });
+  });
+
+  it('shows Uncategorised for a project without a category', async () => {
+    setup({ projectQuery: { data: { ...project, category_id: null, category_name: '' } } });
+
+    expect(await screen.findByRole('combobox')).toHaveTextContent('Uncategorised');
+  });
+
+  it('keeps a project without a category uncategorised when saving other changes', async () => {
+    const { updateProject, user } = setup({ projectQuery: { data: { ...project, category_id: null, category_name: '' } } });
+    await waitFor(() => expect(screen.getByLabelText('Year')).toHaveValue(2026));
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByRole('combobox')).toHaveTextContent('Select category');
+    await user.click(screen.getByRole('button', { name: 'Update' }));
+
+    await waitFor(() => expect(updateProject).toHaveBeenCalled());
+    const { data } = updateProject.mock.calls[0][0];
+    expect(data.category_id).toBeUndefined();
+    expect(data.category_name).toBeUndefined();
   });
 
   it('reports a failure when either update is rejected', async () => {

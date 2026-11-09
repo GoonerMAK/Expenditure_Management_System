@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { getBuiltInRoles } from "../roles.js";
 
 const genderEnum = z.enum(["Male", "Female", "Other"]);
-const roleNamesEnum = z.enum(["Read-only", "Contributor", "Administrator"]); 
+const roleNamesEnum = z.enum(getBuiltInRoles());
 
 export const userParamsSchema = z.object({
     id: z.string().uuid({ message: "Invalid ID format. Must be a UUID." })

@@ -20,7 +20,6 @@ describe('project.validator projectSchema', () => {
       category_name: 'Infrastructure',
       start_date: '2026-02-01',
       end_date: '2026-12-31T00:00:00.000Z',
-      created_by_id: OTHER_ID,
     });
 
     expect(result).toEqual(
@@ -81,8 +80,12 @@ describe('project.validator projectSchema', () => {
   });
 
   describe('references', () => {
-    it.each(['category_id', 'created_by_id'])('rejects a non-UUID %s', (field) => {
-      expect(issue({ project_name: 'Bridge', [field]: 'abc' })?.path).toEqual([field]);
+    it('rejects a non-UUID category_id', () => {
+      expect(issue({ project_name: 'Bridge', category_id: 'abc' })?.path).toEqual(['category_id']);
+    });
+
+    it('strips created_by_id so the client cannot set the project owner', () => {
+      expect(projectSchema.parse({ project_name: 'Bridge', created_by_id: OTHER_ID })).not.toHaveProperty('created_by_id');
     });
   });
 });

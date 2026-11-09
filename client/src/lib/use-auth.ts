@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { User } from '../components/interfaces';
 
 const useAuth = () => {
-  const [user, setUser] = useState<any>(null); 
+  const [user, setUser] = useState<User | null>(null); 
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {

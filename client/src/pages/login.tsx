@@ -4,15 +4,13 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import axios from 'axios';
-import { jwtDecode, JwtPayload } from 'jwt-decode'; 
-import Cookies from 'js-cookie';
 import useAuth from '../lib/use-auth';
+import { getServerMessage } from '../lib/utils';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [user, setUser] = useState('');
   const navigate = useNavigate();
   const { user: authenticatedUser } = useAuth();
 
@@ -20,15 +18,10 @@ const Login = () => {
     event.preventDefault();
 
     try {
-      const response = await axios.post('http://localhost:4000/api/auth/login', { email, password }, { withCredentials: true });
-      const decodedToken = jwtDecode<JwtPayload>(response.data.token); 
-
-      Cookies.set('jwt', response.data.token, { expires: new Date((decodedToken as {exp:number}).exp * 1000 )})
-      setUser(response.data.user);
-
+      await axios.post('http://localhost:4000/api/auth/login', { email, password }, { withCredentials: true });
       navigate('/dashboard');
-    } catch (error: any) {
-      setError(error.response?.data?.message || error.message);
+    } catch (error) {
+      setError(getServerMessage(error) || (error instanceof Error ? error.message : '') || 'Login failed');
     }
   };
 

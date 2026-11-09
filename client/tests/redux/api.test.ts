@@ -73,6 +73,34 @@ describe('RTK Query APIs', () => {
       expect(result.data).toEqual({ id: 'p1' });
     });
 
+    it('fetches the budget summary', async () => {
+      const { requests } = mockServer(() => ({ body: { overall: {}, projects: [] } }));
+      const store = makeStore();
+
+      const result = await store.dispatch(projectApi.endpoints.getBudgetSummary.initiate());
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}projects/summary`, method: 'GET' }));
+      expect(result.data).toEqual({ overall: {}, projects: [] });
+    });
+
+    it('fetches the budget by category', async () => {
+      const { requests } = mockServer(() => ({ body: [] }));
+      const store = makeStore();
+
+      await store.dispatch(projectApi.endpoints.getBudgetByCategory.initiate());
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}projects/summary/categories`, method: 'GET' }));
+    });
+
+    it('fetches the trend for a project', async () => {
+      const { requests } = mockServer(() => ({ body: { monthly: [], yearly: [] } }));
+      const store = makeStore();
+
+      await store.dispatch(projectApi.endpoints.getProjectTrend.initiate('p1'));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}projects/p1/trend`, method: 'GET' }));
+    });
+
     it('creates a project with a POST body', async () => {
       const { requests } = mockServer(() => ({ body: { id: 'p1' } }));
       const store = makeStore();
@@ -157,6 +185,73 @@ describe('RTK Query APIs', () => {
         expect.objectContaining({ url: `${BASE}categories`, method: 'POST', body: { category_name: 'Health' } }),
       );
       expect(requests.filter((request) => request.method === 'GET')).toHaveLength(2);
+    });
+
+    it('fetches what uses a category', async () => {
+      const { requests } = mockServer(() => ({ body: { project_count: 0 } }));
+      const store = makeStore();
+
+      await store.dispatch(categoryApi.endpoints.getCategoryUsage.initiate('c1'));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}categories/c1/usage`, method: 'GET' }));
+    });
+
+    it('renames a category with a PUT and refetches categories and projects', async () => {
+      const { requests } = mockServer(({ method, url }) =>
+        method !== 'GET' ? { body: { id: 'c1' } } : url.includes('projects') ? { body: { data: [], pagination: {} } } : { body: [] },
+      );
+      const store = makeStore();
+      store.dispatch(categoryApi.endpoints.getCategories.initiate());
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      await store.dispatch(categoryApi.endpoints.updateCategory.initiate({ id: 'c1', category_name: 'Tech' }));
+      await flush();
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      expect(requests).toContainEqual(
+        expect.objectContaining({ url: `${BASE}categories/c1`, method: 'PUT', body: { category_name: 'Tech' } }),
+      );
+      expect(urlsFor(requests, 'categories')).toHaveLength(2);
+      expect(urlsFor(requests, 'projects?offset=0&limit=6')).toHaveLength(2);
+    });
+
+    it('deletes a category with a DELETE and refetches categories and projects', async () => {
+      const { requests } = mockServer(({ method, url }) =>
+        method !== 'GET' ? { body: { id: 'c1' } } : url.includes('projects') ? { body: { data: [], pagination: {} } } : { body: [] },
+      );
+      const store = makeStore();
+      store.dispatch(categoryApi.endpoints.getCategories.initiate());
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      await store.dispatch(categoryApi.endpoints.deleteCategory.initiate('c1'));
+      await flush();
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      expect(requests).toContainEqual(expect.objectContaining({ url: `${BASE}categories/c1`, method: 'DELETE' }));
+      expect(urlsFor(requests, 'categories')).toHaveLength(2);
+      expect(urlsFor(requests, 'projects?offset=0&limit=6')).toHaveLength(2);
+    });
+
+    it('keeps the project cache when a rename fails', async () => {
+      const { requests } = mockServer(({ method, url }) =>
+        method !== 'GET'
+          ? { status: 409, body: { message: 'taken' } }
+          : url.includes('projects') ? { body: { data: [], pagination: {} } } : { body: [] },
+      );
+      const store = makeStore();
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      await store.dispatch(categoryApi.endpoints.updateCategory.initiate({ id: 'c1', category_name: 'Tech' }));
+      await flush();
+      store.dispatch(projectApi.endpoints.getProjects.initiate({}));
+      await flush();
+
+      expect(urlsFor(requests, 'projects?offset=0&limit=6')).toHaveLength(1);
     });
   });
 
@@ -268,7 +363,7 @@ describe('RTK Query APIs', () => {
       const store = makeStore();
 
       await store.dispatch(
-        userApi.endpoints.updateUser.initiate({ id: 'u1', data: { data: { role_name: 'Read-only' } } as never }),
+        userApi.endpoints.updateUser.initiate({ id: 'u1', data: { data: { role_name: 'Read-only' } } }),
       );
 
       expect(requests[0]).toEqual(
@@ -282,7 +377,7 @@ describe('RTK Query APIs', () => {
       store.dispatch(userApi.endpoints.getUserAuth.initiate());
       await flush();
 
-      await store.dispatch(userApi.endpoints.updateUser.initiate({ id: 'u1', data: { name: 'Jane' } }));
+      await store.dispatch(userApi.endpoints.updateUser.initiate({ id: 'u1', data: { data: { name: 'Jane' } } }));
       await flush();
 
       expect(urlsFor(requests, 'auth/user')).toHaveLength(2);

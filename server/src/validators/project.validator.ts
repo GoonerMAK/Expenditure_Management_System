@@ -19,7 +19,6 @@ export const projectSchema = z.object({
     category_name: z.string().optional(),
     start_date: z.preprocess(datePreprocess, z.date().optional()),
     end_date: z.preprocess(datePreprocess, z.date().optional()),
-    created_by_id: z.string().uuid().optional(),
 });
 
 export type ProjectParams = z.infer<typeof projectParamsSchema>

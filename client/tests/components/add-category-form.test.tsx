@@ -3,31 +3,38 @@ import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import AddCategoryForm from '../../src/components/add-category-form';
 import { useAddCategoryMutation, useGetCategoriesQuery } from '../../src/redux/category-api';
+import useAuth from '../../src/lib/use-auth';
 import { mutationResult, queryResult, rejectingTrigger, resolvingTrigger } from '../support/rtk';
 
 jest.mock('sonner', () => ({
   toast: { success: jest.fn(), error: jest.fn() },
   Toaster: () => null,
 }));
+jest.mock('../../src/lib/use-auth');
 jest.mock('../../src/redux/category-api', () => ({
   useGetCategoriesQuery: jest.fn(),
   useAddCategoryMutation: jest.fn(),
+  useUpdateCategoryMutation: jest.fn(() => [jest.fn(), { isLoading: false }]),
+  useDeleteCategoryMutation: jest.fn(() => [jest.fn(), { isLoading: false }]),
+  useGetCategoryUsageQuery: jest.fn(() => ({ isLoading: true })),
 }));
 
 const mockedGetCategories = jest.mocked(useGetCategoriesQuery);
 const mockedAddCategory = jest.mocked(useAddCategoryMutation);
+const mockedUseAuth = jest.mocked(useAuth);
 
 const categories = [
   { id: 'c1', category_name: 'Infrastructure', created_at: '', updated_at: '' },
   { id: 'c2', category_name: 'Healthcare', created_at: '', updated_at: '' },
 ];
 
-type SetupOptions = { trigger?: jest.Mock; isLoading?: boolean; data?: typeof categories };
+type SetupOptions = { trigger?: jest.Mock; isLoading?: boolean; data?: typeof categories; role?: string };
 
 const setup = (options: SetupOptions = {}) => {
-  const { trigger = resolvingTrigger({ id: 'c3' }), isLoading = false } = options;
+  const { trigger = resolvingTrigger({ id: 'c3' }), isLoading = false, role = 'Read-only' } = options;
   const data = 'data' in options ? options.data : categories;
   const refetch = jest.fn();
+  mockedUseAuth.mockReturnValue({ user: { id: 'u1', role_name: role }, loading: false } as never);
   mockedGetCategories.mockReturnValue(queryResult({ data, refetch }));
   mockedAddCategory.mockReturnValue(mutationResult(trigger, { isLoading }));
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -37,6 +44,20 @@ const setup = (options: SetupOptions = {}) => {
 };
 
 describe('AddCategoryForm', () => {
+  it('shows rename and delete buttons to a Contributor', () => {
+    setup({ role: 'Contributor' });
+
+    expect(screen.getByRole('button', { name: 'Rename Infrastructure' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Infrastructure' })).toBeInTheDocument();
+  });
+
+  it('hides rename and delete buttons from a Read-only user', () => {
+    setup();
+
+    expect(screen.queryByRole('button', { name: /^Rename / })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Delete / })).not.toBeInTheDocument();
+  });
+
   it('lists the existing categories', () => {
     setup();
 
@@ -44,10 +65,35 @@ describe('AddCategoryForm', () => {
     expect(screen.getByRole('cell', { name: 'Healthcare' })).toBeInTheDocument();
   });
 
-  it('renders an empty table when categories have not loaded', () => {
+  it('says there are no categories when categories have not loaded', () => {
     setup({ data: undefined });
 
     expect(screen.queryAllByRole('cell')).toHaveLength(0);
+    expect(screen.getByText('No categories yet')).toBeInTheDocument();
+  });
+
+  it('says there are no categories when the list is empty', () => {
+    setup({ data: [] });
+
+    expect(screen.getByText('No categories yet')).toBeInTheDocument();
+  });
+
+  it('puts the form and the list in their own outlined sections', () => {
+    setup();
+
+    const form = screen.getByRole('region', { name: 'Add a category' });
+    const list = screen.getByRole('region', { name: 'Existing categories' });
+
+    expect(form).toHaveClass('border', 'border-section');
+    expect(list).toHaveClass('border', 'border-section');
+    expect(form).toContainElement(screen.getByLabelText('Category Name'));
+    expect(list).toContainElement(screen.getByRole('cell', { name: 'Infrastructure' }));
+  });
+
+  it('separates each category with a visible line', () => {
+    setup();
+
+    screen.getAllByRole('row').forEach((row) => expect(row).toHaveClass('border-b', 'border-section'));
   });
 
   it('creates the category, confirms it and refetches the list', async () => {
@@ -62,24 +108,48 @@ describe('AddCategoryForm', () => {
   });
 
   it('shows the server message when creation fails', async () => {
-    const { refetch, user } = setup({ trigger: rejectingTrigger({ data: { message: 'Category name must be at least 3 characters long' } }) });
+    const { refetch, user } = setup({
+      trigger: rejectingTrigger({ status: 409, data: { message: 'A category named "Tech" already exists.' } }),
+    });
 
-    await user.type(screen.getByLabelText('Category Name'), 'Ed');
+    await user.type(screen.getByLabelText('Category Name'), 'tech');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('Error: Category name must be at least 3 characters long'),
-    );
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('A category named "Tech" already exists.'));
     expect(refetch).not.toHaveBeenCalled();
   });
 
-  it('shows a fallback message when the failure has no server message', async () => {
+  it('names the signed-in role when it cannot manage categories', async () => {
+    const { user } = setup({ trigger: rejectingTrigger({ status: 403, data: { message: 'Access denied.' } }) });
+
+    await user.type(screen.getByLabelText('Category Name'), 'Education');
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Your role (Read-only) can't manage categories."));
+  });
+
+  it('explains a connection problem when the server cannot be reached', async () => {
     const { user } = setup({ trigger: rejectingTrigger({ status: 'FETCH_ERROR' }) });
 
     await user.type(screen.getByLabelText('Category Name'), 'Education');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Error: Failed to create Category'));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't reach the server. Check your connection and try again."),
+    );
+  });
+
+  it('never shows internal error text from a server crash', async () => {
+    const { user } = setup({
+      trigger: rejectingTrigger({ status: 500, data: { message: 'PrismaClientKnownRequestError: Unique constraint failed' } }),
+    });
+
+    await user.type(screen.getByLabelText('Category Name'), 'Education');
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('Something went wrong while saving the category. Try again.'),
+    );
   });
 
   it('submits an empty name because the form has no client-side rules', async () => {

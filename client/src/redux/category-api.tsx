@@ -1,5 +1,15 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react"; 
-import { Category } from "../components/interfaces";
+import { Category, CategoryUsage } from "../components/interfaces";
+import { projectApi } from "./project-api";
+
+const refreshProjectsAfter = async (_arg: unknown, { dispatch, queryFulfilled }: { dispatch: (action: unknown) => unknown; queryFulfilled: Promise<unknown> }) => {
+  try {
+    await queryFulfilled;
+    dispatch(projectApi.util.resetApiState());
+  } catch {
+    // The caller shows the error
+  }
+};
 
 export const categoryApi = createApi({
   reducerPath: "categoryApi",
@@ -25,6 +35,14 @@ export const categoryApi = createApi({
       }),
     }),
 
+    getCategoryUsage: builder.query<CategoryUsage, string>({
+      query: (id) => ({
+        url: `categories/${id}/usage`,
+        method: 'get',
+      }),
+      keepUnusedDataFor: 0,
+    }),
+
     addCategory: builder.mutation<Category, Partial<Category>>({
       query: (data) => ({
         url: 'categories',
@@ -34,7 +52,33 @@ export const categoryApi = createApi({
       invalidatesTags: [{ type: 'Categories', id: 'LIST' }],
     }),
 
+    updateCategory: builder.mutation<Category, { id: string; category_name: string }>({
+      query: ({ id, category_name }) => ({
+        url: `categories/${id}`,
+        method: 'put',
+        body: { category_name },
+      }),
+      invalidatesTags: [{ type: 'Categories', id: 'LIST' }],
+      onQueryStarted: refreshProjectsAfter,
+    }),
+
+    deleteCategory: builder.mutation<Category, string>({
+      query: (id) => ({
+        url: `categories/${id}`,
+        method: 'delete',
+      }),
+      invalidatesTags: [{ type: 'Categories', id: 'LIST' }],
+      onQueryStarted: refreshProjectsAfter,
+    }),
+
   }),
 });
 
-export const {useGetCategoriesQuery, useGetCategoryByIdQuery, useAddCategoryMutation} = categoryApi;
+export const {
+  useGetCategoriesQuery,
+  useGetCategoryByIdQuery,
+  useGetCategoryUsageQuery,
+  useAddCategoryMutation,
+  useUpdateCategoryMutation,
+  useDeleteCategoryMutation,
+} = categoryApi;
