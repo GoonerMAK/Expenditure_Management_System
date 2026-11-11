@@ -28,8 +28,8 @@ jest.mock('../../src/redux/project-api', () => ({
 jest.mock('../../src/redux/user-api', () => ({ useGetUserAuthQuery: jest.fn() }));
 jest.mock('../../src/components/expense-entries', () => ({
   __esModule: true,
-  default: ({ projectId, canEdit }: { projectId: string; canEdit: boolean }) => (
-    <div data-testid="expense-entries">{`${projectId} ${canEdit ? 'editable' : 'read-only'}`}</div>
+  default: ({ projectId, canEdit, canReview }: { projectId: string; canEdit: boolean; canReview: boolean }) => (
+    <div data-testid="expense-entries">{`${projectId} ${canEdit ? 'editable' : 'read-only'} ${canReview ? 'reviewer' : 'no-review'}`}</div>
   ),
 }));
 
@@ -234,7 +234,19 @@ describe('SingleProject (single project card)', () => {
   it('shows the expense entries read-only to Read-only users', () => {
     setup({ role: 'Read-only' });
 
-    expect(screen.getByTestId('expense-entries')).toHaveTextContent('p1 read-only');
+    expect(screen.getByTestId('expense-entries')).toHaveTextContent('p1 read-only no-review');
+  });
+
+  it('lets only Administrators review expense entries', () => {
+    setup({ role: 'Administrator' });
+
+    expect(screen.getByTestId('expense-entries')).toHaveTextContent('p1 editable reviewer');
+  });
+
+  it('does not let Contributors review expense entries', () => {
+    setup();
+
+    expect(screen.getByTestId('expense-entries')).toHaveTextContent('p1 editable no-review');
   });
 
   it('locks the expenditure when the month has expense entries', async () => {

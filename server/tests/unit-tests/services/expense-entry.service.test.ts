@@ -1,17 +1,21 @@
 import * as expenseEntryService from '../../../src/services/expense-entry.service.js';
 import * as expenseEntryRepository from '../../../src/repositories/expense-entry.repository.js';
 import * as projectRepository from '../../../src/repositories/project.repository.js';
+import * as userRepository from '../../../src/repositories/user.repository.js';
 import * as receiptStorage from '../../../src/storage/receipt.storage.js';
-import { buildExpenseEntry, buildProject, ID, NOW, OTHER_ID } from '../helpers/factories.js';
+import { buildExpenseEntry, buildProject, buildRole, buildUser, ID, NOW, OTHER_ID, withReviewer } from '../helpers/factories.js';
 
 jest.mock('../../../src/repositories/expense-entry.repository.js');
 jest.mock('../../../src/repositories/project.repository.js');
+jest.mock('../../../src/repositories/user.repository.js');
 jest.mock('../../../src/storage/receipt.storage.js');
 
 const repo = jest.mocked(expenseEntryRepository);
 const projects = jest.mocked(projectRepository);
+const users = jest.mocked(userRepository);
 const storage = jest.mocked(receiptStorage);
 
+const USER_ID = 'c4d5e6f7-1a2b-4c3d-8e9f-0a1b2c3d4e5f';
 const NEW_FILE = 'new-receipt.png';
 const OLD_FILE = 'b6d1c1e2-0f4a-4e7b-9a55-3c2d1e0f9a8b.pdf';
 
@@ -25,6 +29,13 @@ const input = {
 
 const upload = { buffer: Buffer.from('png-bytes'), mimetype: 'image/png', originalname: 'photo.png' } as Express.Multer.File;
 
+const userWithRole = (role_name: string) => ({ ...buildUser({ id: USER_ID, role_name }), role: buildRole({ role_name }) });
+
+const contributor = userWithRole('Contributor');
+const administrator = userWithRole('Administrator');
+
+const pending = { status: 'Pending', rejection_reason: null, reviewed_by_id: null, reviewed_at: null };
+
 const publicEntry = (overrides = {}) => ({
   id: ID,
   project_id: OTHER_ID,
@@ -34,7 +45,12 @@ const publicEntry = (overrides = {}) => ({
   notes: 'Rebar for the north pier',
   receipt_name: 'invoice-1042.pdf',
   receipt_type: 'application/pdf',
+  status: 'Approved',
+  rejection_reason: null,
+  reviewed_by_id: null,
+  reviewed_at: null,
   has_receipt: true,
+  reviewed_by_name: null,
   created_at: NOW,
   updated_at: NOW,
   ...overrides,
@@ -42,6 +58,7 @@ const publicEntry = (overrides = {}) => ({
 
 describe('expense-entry.service', () => {
   beforeEach(() => {
+    users.getUserWithRole.mockResolvedValue(contributor);
     storage.saveReceipt.mockResolvedValue(NEW_FILE);
     storage.deleteReceipt.mockResolvedValue(undefined);
   });
@@ -54,8 +71,8 @@ describe('expense-entry.service', () => {
     it('returns the entries without the stored file name', async () => {
       projects.getProjectById.mockResolvedValue(buildProject({ id: OTHER_ID }));
       repo.getExpenseEntriesByProject.mockResolvedValue([
-        buildExpenseEntry(),
-        buildExpenseEntry({ receipt_file: null, receipt_name: null, receipt_type: null }),
+        withReviewer(buildExpenseEntry()),
+        withReviewer(buildExpenseEntry({ receipt_file: null, receipt_name: null, receipt_type: null })),
       ]);
 
       const result = await expenseEntryService.getProjectExpenseEntries(OTHER_ID);
@@ -66,6 +83,16 @@ describe('expense-entry.service', () => {
         publicEntry({ receipt_name: null, receipt_type: null, has_receipt: false }),
       ]);
       expect(result?.[0]).not.toHaveProperty('receipt_file');
+    });
+
+    it('shows who reviewed each entry', async () => {
+      projects.getProjectById.mockResolvedValue(buildProject({ id: OTHER_ID }));
+      repo.getExpenseEntriesByProject.mockResolvedValue([withReviewer(buildExpenseEntry({ reviewed_by_id: USER_ID }), 'admin')]);
+
+      const result = await expenseEntryService.getProjectExpenseEntries(OTHER_ID);
+
+      expect(result).toEqual([publicEntry({ reviewed_by_id: USER_ID, reviewed_by_name: 'admin' })]);
+      expect(result?.[0]).not.toHaveProperty('reviewed_by');
     });
 
     it('returns null when the project does not exist', async () => {
@@ -87,22 +114,59 @@ describe('expense-entry.service', () => {
   describe('createExpenseEntry', () => {
     it('creates an entry without a receipt', async () => {
       projects.getProjectById.mockResolvedValue(buildProject({ id: OTHER_ID }));
-      repo.createExpenseEntry.mockResolvedValue(buildExpenseEntry({ receipt_file: null, receipt_name: null, receipt_type: null }));
+      repo.createExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ receipt_file: null, receipt_name: null, receipt_type: null })));
 
-      const result = await expenseEntryService.createExpenseEntry(input);
+      const result = await expenseEntryService.createExpenseEntry(input, USER_ID);
 
       expect(storage.saveReceipt).not.toHaveBeenCalled();
-      expect(repo.createExpenseEntry).toHaveBeenCalledWith(input);
+      expect(repo.createExpenseEntry).toHaveBeenCalledWith({ ...input, ...pending });
       expect(result).toEqual(publicEntry({ receipt_name: null, receipt_type: null, has_receipt: false }));
+    });
+
+    it('starts a Contributor entry as Pending', async () => {
+      projects.getProjectById.mockResolvedValue(buildProject({ id: OTHER_ID }));
+      repo.createExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ status: 'Pending' })));
+
+      const result = await expenseEntryService.createExpenseEntry(input, USER_ID);
+
+      expect(users.getUserWithRole).toHaveBeenCalledWith(USER_ID);
+      expect(repo.createExpenseEntry).toHaveBeenCalledWith(expect.objectContaining(pending));
+      expect(result?.status).toBe('Pending');
+    });
+
+    it('approves an Administrator entry straight away and records the reviewer', async () => {
+      users.getUserWithRole.mockResolvedValue(administrator);
+      projects.getProjectById.mockResolvedValue(buildProject({ id: OTHER_ID }));
+      repo.createExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ reviewed_by_id: USER_ID }), 'admin'));
+
+      await expenseEntryService.createExpenseEntry(input, USER_ID);
+
+      expect(repo.createExpenseEntry).toHaveBeenCalledWith({
+        ...input,
+        status: 'Approved',
+        rejection_reason: null,
+        reviewed_by_id: USER_ID,
+        reviewed_at: expect.any(Date),
+      });
+    });
+
+    it('treats a user without a role as a Contributor', async () => {
+      users.getUserWithRole.mockResolvedValue(null);
+      projects.getProjectById.mockResolvedValue(buildProject({ id: OTHER_ID }));
+      repo.createExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ status: 'Pending' })));
+
+      await expenseEntryService.createExpenseEntry(input, USER_ID);
+
+      expect(repo.createExpenseEntry).toHaveBeenCalledWith(expect.objectContaining(pending));
     });
 
     it('saves the receipt and stores its file, name and type', async () => {
       projects.getProjectById.mockResolvedValue(buildProject({ id: OTHER_ID }));
       repo.createExpenseEntry.mockResolvedValue(
-        buildExpenseEntry({ receipt_file: NEW_FILE, receipt_name: 'photo.png', receipt_type: 'image/png' }),
+        withReviewer(buildExpenseEntry({ receipt_file: NEW_FILE, receipt_name: 'photo.png', receipt_type: 'image/png' })),
       );
 
-      const result = await expenseEntryService.createExpenseEntry(input, upload);
+      const result = await expenseEntryService.createExpenseEntry(input, USER_ID, upload);
 
       expect(storage.saveReceipt).toHaveBeenCalledWith(upload.buffer, 'image/png');
       expect(repo.createExpenseEntry).toHaveBeenCalledWith({
@@ -110,6 +174,7 @@ describe('expense-entry.service', () => {
         receipt_file: NEW_FILE,
         receipt_name: 'photo.png',
         receipt_type: 'image/png',
+        ...pending,
       });
       expect(result).toEqual(publicEntry({ receipt_name: 'photo.png', receipt_type: 'image/png' }));
     });
@@ -117,7 +182,7 @@ describe('expense-entry.service', () => {
     it('returns null without saving anything when the project does not exist', async () => {
       projects.getProjectById.mockResolvedValue(null);
 
-      expect(await expenseEntryService.createExpenseEntry(input, upload)).toBeNull();
+      expect(await expenseEntryService.createExpenseEntry(input, USER_ID, upload)).toBeNull();
       expect(storage.saveReceipt).not.toHaveBeenCalled();
       expect(repo.createExpenseEntry).not.toHaveBeenCalled();
     });
@@ -126,7 +191,7 @@ describe('expense-entry.service', () => {
       projects.getProjectById.mockResolvedValue(buildProject({ id: OTHER_ID }));
       repo.createExpenseEntry.mockRejectedValue(new Error('constraint failed'));
 
-      await expect(expenseEntryService.createExpenseEntry(input, upload)).rejects.toThrow(
+      await expect(expenseEntryService.createExpenseEntry(input, USER_ID, upload)).rejects.toThrow(
         'Failed to create expense entry: Error: constraint failed',
       );
       expect(storage.deleteReceipt).toHaveBeenCalledWith(NEW_FILE);
@@ -137,7 +202,7 @@ describe('expense-entry.service', () => {
       repo.createExpenseEntry.mockRejectedValue(new Error('constraint failed'));
       storage.deleteReceipt.mockRejectedValue(new Error('EACCES'));
 
-      await expect(expenseEntryService.createExpenseEntry(input, upload)).rejects.toThrow(
+      await expect(expenseEntryService.createExpenseEntry(input, USER_ID, upload)).rejects.toThrow(
         'Failed to create expense entry: Error: constraint failed',
       );
     });
@@ -145,7 +210,7 @@ describe('expense-entry.service', () => {
     it('does not try to remove a receipt when none was saved', async () => {
       projects.getProjectById.mockRejectedValue(new Error('db down'));
 
-      await expect(expenseEntryService.createExpenseEntry(input)).rejects.toThrow('Failed to create expense entry: Error: db down');
+      await expect(expenseEntryService.createExpenseEntry(input, USER_ID)).rejects.toThrow('Failed to create expense entry: Error: db down');
       expect(storage.deleteReceipt).not.toHaveBeenCalled();
     });
   });
@@ -153,47 +218,68 @@ describe('expense-entry.service', () => {
   describe('updateExpenseEntry', () => {
     it('updates the fields and keeps the receipt', async () => {
       repo.getExpenseEntryById.mockResolvedValue(buildExpenseEntry());
-      repo.updateExpenseEntry.mockResolvedValue(buildExpenseEntry({ amount: 300 }));
+      repo.updateExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ amount: 300 })));
 
-      const result = await expenseEntryService.updateExpenseEntry(ID, { amount: 300, remove_receipt: false });
+      const result = await expenseEntryService.updateExpenseEntry(ID, { amount: 300, remove_receipt: false }, USER_ID);
 
-      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { amount: 300 });
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { amount: 300, ...pending });
       expect(storage.deleteReceipt).not.toHaveBeenCalled();
       expect(result).toEqual(publicEntry({ amount: 300 }));
+    });
+
+    it('sends a Rejected entry back to Pending when a Contributor edits it', async () => {
+      repo.getExpenseEntryById.mockResolvedValue(buildExpenseEntry({ status: 'Rejected', rejection_reason: 'No receipt' }));
+      repo.updateExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ status: 'Pending' })));
+
+      const result = await expenseEntryService.updateExpenseEntry(ID, { vendor: 'Acme', remove_receipt: false }, USER_ID);
+
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { vendor: 'Acme', ...pending });
+      expect(result?.status).toBe('Pending');
+    });
+
+    it('keeps the status when an Administrator edits the entry', async () => {
+      users.getUserWithRole.mockResolvedValue(administrator);
+      repo.getExpenseEntryById.mockResolvedValue(buildExpenseEntry({ status: 'Rejected' }));
+      repo.updateExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ status: 'Rejected' })));
+
+      await expenseEntryService.updateExpenseEntry(ID, { amount: 300, remove_receipt: false }, USER_ID);
+
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { amount: 300 });
     });
 
     it('replaces the receipt and removes the old file', async () => {
       repo.getExpenseEntryById.mockResolvedValue(buildExpenseEntry());
       repo.updateExpenseEntry.mockResolvedValue(
-        buildExpenseEntry({ receipt_file: NEW_FILE, receipt_name: 'photo.png', receipt_type: 'image/png' }),
+        withReviewer(buildExpenseEntry({ receipt_file: NEW_FILE, receipt_name: 'photo.png', receipt_type: 'image/png' })),
       );
 
-      await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: false }, upload);
+      await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: false }, USER_ID, upload);
 
       expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, {
         receipt_file: NEW_FILE,
         receipt_name: 'photo.png',
         receipt_type: 'image/png',
+        ...pending,
       });
       expect(storage.deleteReceipt).toHaveBeenCalledWith(OLD_FILE);
     });
 
     it('removes the receipt when asked', async () => {
       repo.getExpenseEntryById.mockResolvedValue(buildExpenseEntry());
-      repo.updateExpenseEntry.mockResolvedValue(buildExpenseEntry({ receipt_file: null, receipt_name: null, receipt_type: null }));
+      repo.updateExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ receipt_file: null, receipt_name: null, receipt_type: null })));
 
-      const result = await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: true });
+      const result = await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: true }, USER_ID);
 
-      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { receipt_file: null, receipt_name: null, receipt_type: null });
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { receipt_file: null, receipt_name: null, receipt_type: null, ...pending });
       expect(storage.deleteReceipt).toHaveBeenCalledWith(OLD_FILE);
       expect(result?.has_receipt).toBe(false);
     });
 
     it('does not try to delete a file when the entry had no receipt', async () => {
       repo.getExpenseEntryById.mockResolvedValue(buildExpenseEntry({ receipt_file: null }));
-      repo.updateExpenseEntry.mockResolvedValue(buildExpenseEntry({ receipt_file: null }));
+      repo.updateExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ receipt_file: null })));
 
-      await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: true });
+      await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: true }, USER_ID);
 
       expect(storage.deleteReceipt).not.toHaveBeenCalled();
     });
@@ -201,7 +287,7 @@ describe('expense-entry.service', () => {
     it('returns null when the entry does not exist', async () => {
       repo.getExpenseEntryById.mockResolvedValue(null);
 
-      expect(await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: false }, upload)).toBeNull();
+      expect(await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: false }, USER_ID, upload)).toBeNull();
       expect(storage.saveReceipt).not.toHaveBeenCalled();
       expect(repo.updateExpenseEntry).not.toHaveBeenCalled();
     });
@@ -210,7 +296,7 @@ describe('expense-entry.service', () => {
       repo.getExpenseEntryById.mockResolvedValue(buildExpenseEntry());
       repo.updateExpenseEntry.mockResolvedValue(null);
 
-      expect(await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: false }, upload)).toBeNull();
+      expect(await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: false }, USER_ID, upload)).toBeNull();
       expect(storage.deleteReceipt).toHaveBeenCalledTimes(1);
       expect(storage.deleteReceipt).toHaveBeenCalledWith(NEW_FILE);
     });
@@ -219,11 +305,79 @@ describe('expense-entry.service', () => {
       repo.getExpenseEntryById.mockResolvedValue(buildExpenseEntry());
       repo.updateExpenseEntry.mockRejectedValue(new Error('db down'));
 
-      await expect(expenseEntryService.updateExpenseEntry(ID, { remove_receipt: false }, upload)).rejects.toThrow(
+      await expect(expenseEntryService.updateExpenseEntry(ID, { remove_receipt: false }, USER_ID, upload)).rejects.toThrow(
         'Failed to update expense entry: Error: db down',
       );
       expect(storage.deleteReceipt).toHaveBeenCalledTimes(1);
       expect(storage.deleteReceipt).toHaveBeenCalledWith(NEW_FILE);
+    });
+  });
+
+  describe('approveExpenseEntry', () => {
+    it('approves the entry and records who did it and when', async () => {
+      repo.updateExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ reviewed_by_id: USER_ID }), 'admin'));
+
+      const result = await expenseEntryService.approveExpenseEntry(ID, USER_ID);
+
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, {
+        status: 'Approved',
+        rejection_reason: null,
+        reviewed_by_id: USER_ID,
+        reviewed_at: expect.any(Date),
+      });
+      expect(result).toEqual(publicEntry({ reviewed_by_id: USER_ID, reviewed_by_name: 'admin' }));
+    });
+
+    it('returns null when the entry does not exist', async () => {
+      repo.updateExpenseEntry.mockResolvedValue(null);
+
+      expect(await expenseEntryService.approveExpenseEntry(ID, USER_ID)).toBeNull();
+    });
+
+    it('wraps repository errors', async () => {
+      repo.updateExpenseEntry.mockRejectedValue(new Error('db down'));
+
+      await expect(expenseEntryService.approveExpenseEntry(ID, USER_ID)).rejects.toThrow('Failed to approve expense entry: Error: db down');
+    });
+  });
+
+  describe('rejectExpenseEntry', () => {
+    it('rejects the entry with the reason and records who did it and when', async () => {
+      repo.updateExpenseEntry.mockResolvedValue(
+        withReviewer(buildExpenseEntry({ status: 'Rejected', rejection_reason: 'No receipt', reviewed_by_id: USER_ID }), 'admin'),
+      );
+
+      const result = await expenseEntryService.rejectExpenseEntry(ID, USER_ID, 'No receipt');
+
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, {
+        status: 'Rejected',
+        rejection_reason: 'No receipt',
+        reviewed_by_id: USER_ID,
+        reviewed_at: expect.any(Date),
+      });
+      expect(result).toEqual(
+        publicEntry({ status: 'Rejected', rejection_reason: 'No receipt', reviewed_by_id: USER_ID, reviewed_by_name: 'admin' }),
+      );
+    });
+
+    it('rejects without a reason', async () => {
+      repo.updateExpenseEntry.mockResolvedValue(withReviewer(buildExpenseEntry({ status: 'Rejected' })));
+
+      await expenseEntryService.rejectExpenseEntry(ID, USER_ID);
+
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, expect.objectContaining({ status: 'Rejected', rejection_reason: null }));
+    });
+
+    it('returns null when the entry does not exist', async () => {
+      repo.updateExpenseEntry.mockResolvedValue(null);
+
+      expect(await expenseEntryService.rejectExpenseEntry(ID, USER_ID, 'No receipt')).toBeNull();
+    });
+
+    it('wraps repository errors', async () => {
+      repo.updateExpenseEntry.mockRejectedValue(new Error('db down'));
+
+      await expect(expenseEntryService.rejectExpenseEntry(ID, USER_ID)).rejects.toThrow('Failed to reject expense entry: Error: db down');
     });
   });
 
