@@ -68,6 +68,7 @@ model Project {
   created_by     User            @relation(fields: [created_by_id], references: [id], onDelete: Cascade)
   created_by_id  String
   financial_data FinancialData[]
+  expenses       ExpenseEntry[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -86,4 +87,22 @@ model FinancialData {
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+}
+
+model ExpenseEntry {
+  id           String   @id @default(uuid())
+  project_id   String
+  project      Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  date         DateTime
+  vendor       String
+  amount       Float
+  notes        String?
+  receipt_file String?
+  receipt_name String?
+  receipt_type String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([project_id, date])
 }

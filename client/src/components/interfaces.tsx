@@ -23,6 +23,20 @@ export interface FinancialData {
     project_name?: string;
 }
 
+export interface ExpenseEntry {
+    id: string;
+    project_id: string;
+    date: string;
+    vendor: string;
+    amount: number;
+    notes: string | null;
+    receipt_name: string | null;
+    receipt_type: string | null;
+    has_receipt: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Project {
     id: string;
     project_name: string;

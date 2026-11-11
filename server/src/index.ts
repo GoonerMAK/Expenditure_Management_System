@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from "dotenv";
 
 import { categoryRouter } from './routes/category.route.js';
+import { expenseEntryRouter } from './routes/expense-entry.route.js';
 import { financialDataRouter } from './routes/financial-data.route.js';
 import { permissionRouter } from './routes/permission.route.js';
 import { projectRouter } from './routes/project.route.js';
@@ -24,6 +25,7 @@ app.use(cookieParser());
 
 
 app.use('/api', categoryRouter);
+app.use('/api', expenseEntryRouter);
 app.use('/api', financialDataRouter);
 app.use('/api', permissionRouter);
 app.use('/api', projectRouter);

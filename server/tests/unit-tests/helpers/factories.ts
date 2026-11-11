@@ -1,4 +1,4 @@
-import type { Category, FinancialData, Permission, Project, Role, User } from '@prisma/client';
+import type { Category, ExpenseEntry, FinancialData, Permission, Project, Role, User } from '@prisma/client';
 
 export const ID = '3f1c2a4e-8b7d-4c6a-9e2f-1a2b3c4d5e6f';
 export const OTHER_ID = '7a9b8c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
@@ -71,6 +71,21 @@ export const buildFinancialData = (overrides: Partial<FinancialData> = {}): Fina
   revised_budget: 12000,
   project_id: OTHER_ID,
   project_name: 'Bridge Renovation',
+  created_at: NOW,
+  updated_at: NOW,
+  ...overrides,
+});
+
+export const buildExpenseEntry = (overrides: Partial<ExpenseEntry> = {}): ExpenseEntry => ({
+  id: ID,
+  project_id: OTHER_ID,
+  date: new Date('2026-03-12T00:00:00.000Z'),
+  vendor: 'Steel Supplies Ltd',
+  amount: 250.75,
+  notes: 'Rebar for the north pier',
+  receipt_file: 'b6d1c1e2-0f4a-4e7b-9a55-3c2d1e0f9a8b.pdf',
+  receipt_name: 'invoice-1042.pdf',
+  receipt_type: 'application/pdf',
   created_at: NOW,
   updated_at: NOW,
   ...overrides,

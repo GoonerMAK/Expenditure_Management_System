@@ -11,6 +11,15 @@ export const formatAmount = (amount: number) =>
 export const formatDate = (date: string | Date | undefined | null) =>
   date ? new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Not specified'
 
+// Entry dates are stored as UTC midnight, so read them in UTC to keep the right day and month.
+export const getYearMonth = (date: string | Date) => {
+  const day = new Date(date)
+  return { year: day.getUTCFullYear(), month: day.getUTCMonth() + 1 }
+}
+
+export const formatDay = (date: string | Date) =>
+  new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+
 export const formatMonth = (year: number, month: number) =>
   new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 

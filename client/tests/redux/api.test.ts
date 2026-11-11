@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 import { categoryApi } from '../../src/redux/category-api';
-import { financialDataApi } from '../../src/redux/financial-data-api';
+import { financialDataApi, getReceiptUrl } from '../../src/redux/financial-data-api';
 import { projectApi } from '../../src/redux/project-api';
 import { roleApi } from '../../src/redux/role-api';
 import { userApi } from '../../src/redux/user-api';
@@ -252,6 +252,74 @@ describe('RTK Query APIs', () => {
       await flush();
 
       expect(urlsFor(requests, 'projects?offset=0&limit=6')).toHaveLength(1);
+    });
+  });
+
+  describe('financialDataApi expense entries', () => {
+    const formData = () => {
+      const data = new FormData();
+      data.append('vendor', 'Acme');
+      return data;
+    };
+
+    it('lists the expense entries of a project', async () => {
+      const { requests } = mockServer(() => ({ body: [] }));
+      const store = makeStore();
+
+      await store.dispatch(financialDataApi.endpoints.getProjectExpenses.initiate('p1'));
+
+      expect(requests).toEqual([expect.objectContaining({ url: `${BASE}projects/p1/expenses`, method: 'GET' })]);
+    });
+
+    it('adds an entry as multipart form data', async () => {
+      const { requests } = mockServer(() => ({ body: {} }));
+      const store = makeStore();
+
+      await store.dispatch(financialDataApi.endpoints.addExpense.initiate({ projectId: 'p1', data: formData() }));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}expenses`, method: 'POST' }));
+      expect(requests[0].body).toEqual(expect.stringContaining('name="vendor"'));
+    });
+
+    it('updates an entry with a PUT to its id', async () => {
+      const { requests } = mockServer(() => ({ body: {} }));
+      const store = makeStore();
+
+      await store.dispatch(financialDataApi.endpoints.updateExpense.initiate({ id: 'e1', projectId: 'p1', data: formData() }));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}expenses/e1`, method: 'PUT' }));
+    });
+
+    it('deletes an entry by id', async () => {
+      const { requests } = mockServer(() => ({ body: {} }));
+      const store = makeStore();
+
+      await store.dispatch(financialDataApi.endpoints.deleteExpense.initiate({ id: 'e1', projectId: 'p1' }));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}expenses/e1`, method: 'DELETE' }));
+    });
+
+    it('builds the receipt link for an entry', () => {
+      expect(getReceiptUrl('e1')).toBe(`${BASE}expenses/e1/receipt`);
+    });
+
+    it.each([
+      ['addExpense', () => financialDataApi.endpoints.addExpense.initiate({ projectId: 'p1', data: formData() })],
+      ['updateExpense', () => financialDataApi.endpoints.updateExpense.initiate({ id: 'e1', projectId: 'p1', data: formData() })],
+      ['deleteExpense', () => financialDataApi.endpoints.deleteExpense.initiate({ id: 'e1', projectId: 'p1' })],
+    ])('refetches the entries and the monthly totals after %s', async (_name, mutation) => {
+      const { requests } = mockServer(() => ({ body: [] }));
+      const store = makeStore();
+      store.dispatch(financialDataApi.endpoints.getProjectExpenses.initiate('p1'));
+      store.dispatch(financialDataApi.endpoints.getFinancialDataById.initiate('p1'));
+      await flush();
+
+      await store.dispatch(mutation());
+      await flush();
+      await flush();
+
+      expect(urlsFor(requests, 'projects/p1/expenses')).toHaveLength(2);
+      expect(urlsFor(requests, 'financialData/p1')).toHaveLength(2);
     });
   });
 

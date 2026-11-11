@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import SingleProject from '../../src/components/single-project-card';
 import useAuth from '../../src/lib/use-auth';
 import { useGetCategoriesQuery } from '../../src/redux/category-api';
-import { useGetFinancialDataByIdQuery, useUpdateFinancialDataMutation } from '../../src/redux/financial-data-api';
+import { useGetFinancialDataByIdQuery, useGetProjectExpensesQuery, useUpdateFinancialDataMutation } from '../../src/redux/financial-data-api';
 import { useGetProjectByIdQuery, useUpdateProjectMutation } from '../../src/redux/project-api';
 import { useGetUserAuthQuery } from '../../src/redux/user-api';
 import { mutationResult, queryResult, rejectingTrigger, resolvingTrigger } from '../support/rtk';
@@ -18,6 +18,7 @@ jest.mock('../../src/lib/use-auth');
 jest.mock('../../src/redux/category-api', () => ({ useGetCategoriesQuery: jest.fn() }));
 jest.mock('../../src/redux/financial-data-api', () => ({
   useGetFinancialDataByIdQuery: jest.fn(),
+  useGetProjectExpensesQuery: jest.fn(),
   useUpdateFinancialDataMutation: jest.fn(),
 }));
 jest.mock('../../src/redux/project-api', () => ({
@@ -25,6 +26,12 @@ jest.mock('../../src/redux/project-api', () => ({
   useUpdateProjectMutation: jest.fn(),
 }));
 jest.mock('../../src/redux/user-api', () => ({ useGetUserAuthQuery: jest.fn() }));
+jest.mock('../../src/components/expense-entries', () => ({
+  __esModule: true,
+  default: ({ projectId, canEdit }: { projectId: string; canEdit: boolean }) => (
+    <div data-testid="expense-entries">{`${projectId} ${canEdit ? 'editable' : 'read-only'}`}</div>
+  ),
+}));
 
 const mockedUseAuth = jest.mocked(useAuth);
 const mockedGetCategories = jest.mocked(useGetCategoriesQuery);
@@ -33,6 +40,7 @@ const mockedUpdateFinancial = jest.mocked(useUpdateFinancialDataMutation);
 const mockedGetProject = jest.mocked(useGetProjectByIdQuery);
 const mockedUpdateProject = jest.mocked(useUpdateProjectMutation);
 const mockedGetUserAuth = jest.mocked(useGetUserAuthQuery);
+const mockedGetExpenses = jest.mocked(useGetProjectExpensesQuery);
 
 const project = {
   id: 'p1',
@@ -52,6 +60,7 @@ type SetupOptions = {
   financialQuery?: Record<string, unknown>;
   updateProject?: jest.Mock;
   updateFinancial?: jest.Mock;
+  expenses?: { date: string }[];
 };
 
 const setup = ({
@@ -60,6 +69,7 @@ const setup = ({
   financialQuery = { data: financialData },
   updateProject = resolvingTrigger({}),
   updateFinancial = resolvingTrigger({}),
+  expenses = [],
 }: SetupOptions = {}) => {
   mockedUseAuth.mockReturnValue({ user: { id: 'u1', role_name: role }, loading: false });
   mockedGetProject.mockReturnValue(queryResult(projectQuery));
@@ -68,6 +78,7 @@ const setup = ({
   mockedGetUserAuth.mockReturnValue(queryResult({ data: { user: { id: 'u1' } } }));
   mockedUpdateProject.mockReturnValue(mutationResult(updateProject));
   mockedUpdateFinancial.mockReturnValue(mutationResult(updateFinancial));
+  mockedGetExpenses.mockReturnValue(queryResult({ data: expenses }));
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
   render(
@@ -211,5 +222,40 @@ describe('SingleProject (single project card)', () => {
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to update project'));
     expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it('shows the expense entries for the route project', () => {
+    setup();
+
+    expect(mockedGetExpenses).toHaveBeenCalledWith('p1');
+    expect(screen.getByTestId('expense-entries')).toHaveTextContent('p1 editable');
+  });
+
+  it('shows the expense entries read-only to Read-only users', () => {
+    setup({ role: 'Read-only' });
+
+    expect(screen.getByTestId('expense-entries')).toHaveTextContent('p1 read-only');
+  });
+
+  it('locks the expenditure when the month has expense entries', async () => {
+    const { user } = setup({ expenses: [{ date: '2026-03-12T00:00:00.000Z' }] });
+    await waitFor(() => expect(screen.getByLabelText('Year')).toHaveValue(2026));
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(screen.getByLabelText('Expenditure')).toBeDisabled();
+    expect(screen.getByText('Adds up from the expense entries for this month')).toBeInTheDocument();
+  });
+
+  it('unlocks the expenditure when the form moves to a month without entries', async () => {
+    const { user } = setup({ expenses: [{ date: '2026-03-12T00:00:00.000Z' }] });
+    await waitFor(() => expect(screen.getByLabelText('Year')).toHaveValue(2026));
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.clear(screen.getByLabelText('Month'));
+    await user.type(screen.getByLabelText('Month'), '4');
+
+    expect(screen.getByLabelText('Expenditure')).toBeEnabled();
+    expect(screen.getByText('Enter the expenditure amount (optional)')).toBeInTheDocument();
   });
 });
