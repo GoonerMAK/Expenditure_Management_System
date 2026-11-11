@@ -136,8 +136,25 @@ describe('project.controller', () => {
 
       await projectController.getAllProjects(mockRequest({ query: { offset: 6, limit: 6 } }), res);
 
-      expect(service.getAllProjects).toHaveBeenCalledWith(6, 6);
+      expect(service.getAllProjects).toHaveBeenCalledWith(6, 6, {}, undefined);
       expectResponse(res, 200, page);
+    });
+
+    it('passes the filters and the sort from the query to the service', async () => {
+      service.getAllProjects.mockResolvedValue({
+        data: [],
+        pagination: { offset: 0, limit: 6, totalItems: 0, totalPages: 0, hasMore: false },
+      });
+      const query = { offset: 0, limit: 6, search: 'bridge', category: OTHER_ID, owner: ID, from: START, to: END, sort: 'name_desc' };
+
+      await projectController.getAllProjects(mockRequest({ query }), mockResponse());
+
+      expect(service.getAllProjects).toHaveBeenCalledWith(
+        0,
+        6,
+        { search: 'bridge', category: OTHER_ID, owner: ID, from: START, to: END },
+        'name_desc',
+      );
     });
 
     it('responds 500 when the service throws', async () => {
@@ -145,6 +162,27 @@ describe('project.controller', () => {
       const res = mockResponse();
 
       await projectController.getAllProjects(mockRequest({ query: { offset: 0, limit: 6 } }), res);
+
+      expectResponse(res, 500, { error: 'boom' });
+    });
+  });
+
+  describe('getProjectOwners', () => {
+    it('responds 200 with the owners', async () => {
+      const owners = [{ id: OTHER_ID, display_name: 'jdoe' }];
+      service.getProjectOwners.mockResolvedValue(owners);
+      const res = mockResponse();
+
+      await projectController.getProjectOwners(mockRequest(), res);
+
+      expectResponse(res, 200, owners);
+    });
+
+    it('responds 500 when the service throws', async () => {
+      service.getProjectOwners.mockRejectedValue(new Error('boom'));
+      const res = mockResponse();
+
+      await projectController.getProjectOwners(mockRequest(), res);
 
       expectResponse(res, 500, { error: 'boom' });
     });

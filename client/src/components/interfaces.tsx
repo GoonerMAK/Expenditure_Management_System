@@ -50,6 +50,27 @@ export interface Project {
     updated_at: string | Date;
 }
 
+export type ProjectSort = 'name_asc' | 'name_desc' | 'start_date_desc' | 'start_date_asc' | 'spend_desc' | 'spend_asc';
+
+export interface ProjectFilters {
+    search: string;
+    category: string;
+    owner: string;
+    from: string;
+    to: string;
+    sort: ProjectSort | '';
+}
+
+export type ProjectListArgs = Partial<ProjectFilters> & {
+    offset?: number;
+    limit?: number;
+};
+
+export interface ProjectOwner {
+    id: string;
+    display_name: string;
+}
+
 export interface User {
   id: string;
   username?: string;

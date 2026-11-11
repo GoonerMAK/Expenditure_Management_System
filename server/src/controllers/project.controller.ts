@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import * as projectService from '../services/project.service.js';
-import { Project, ProjectParams } from '../validators/project.validator.js';
-import { PaginationQuery } from '../validators/pagination.validator.js';
+import { Project, ProjectListQuery, ProjectParams } from '../validators/project.validator.js';
 
 export const createProject = async (req: Request<unknown, unknown, Project, unknown>, res: Response) => {
     const { project_name, description, category_id, category_name, start_date, end_date } = req.body;
@@ -59,11 +58,20 @@ export const deleteProject = async (req: Request<ProjectParams, unknown, Project
     }
 };
 
-export const getAllProjects = async (req: Request<unknown, unknown, unknown, PaginationQuery>, res: Response) => {
+export const getAllProjects = async (req: Request<unknown, unknown, unknown, ProjectListQuery>, res: Response) => {
     try {
-        const { offset, limit } = req.query;
-        const projects = await projectService.getAllProjects(offset, limit);
+        const { offset, limit, sort, ...filters } = req.query;
+        const projects = await projectService.getAllProjects(offset, limit, filters, sort);
         res.status(200).json(projects);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getProjectOwners = async (_req: Request<unknown, unknown, unknown, unknown>, res: Response) => {
+    try {
+        const owners = await projectService.getProjectOwners();
+        res.status(200).json(owners);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
