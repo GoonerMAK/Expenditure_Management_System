@@ -1,5 +1,6 @@
 import * as projectRepository from '../repositories/project.repository.js';
 import { getUncategorisedLabel } from '../categories.js';
+import { ProjectListFilters, ProjectSort } from '../validators/project.validator.js';
 
 export const createProject = async (
     project_name: string,
@@ -68,11 +69,11 @@ export const deleteProject = async (id: string) => {
     }
 };
 
-export const getAllProjects = async (offset: number, limit: number) => {
+export const getAllProjects = async (offset: number, limit: number, filters: ProjectListFilters = {}, sort?: ProjectSort) => {
     try {
         const [projects, totalCount] = await Promise.all([
-            projectRepository.getAllProjects(offset, limit),
-            projectRepository.getProjectsCount()
+            projectRepository.getAllProjects(offset, limit, filters, sort),
+            projectRepository.getProjectsCount(filters)
         ]);
 
         const result = {
@@ -88,6 +89,29 @@ export const getAllProjects = async (offset: number, limit: number) => {
         return result;
     } catch (error) {
         throw new Error(`Failed to fetch projects: ${error}`);
+    }
+};
+
+type ProjectOwner = {
+    id: string;
+    username: string | null;
+    name: string | null;
+    email: string;
+};
+
+const toOwnerOption = (owner: ProjectOwner) => ({
+    id: owner.id,
+    display_name: owner.username || owner.name || owner.email,
+});
+
+export const getProjectOwners = async () => {
+    try {
+        const owners = await projectRepository.getProjectOwners();
+        return owners
+            .map(toOwnerOption)
+            .sort((a, b) => a.display_name.localeCompare(b.display_name));
+    } catch (error) {
+        throw new Error(`Failed to fetch project owners: ${error}`);
     }
 };
 

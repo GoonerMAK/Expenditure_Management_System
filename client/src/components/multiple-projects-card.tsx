@@ -1,12 +1,15 @@
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
-import { useGetBudgetSummaryQuery, useGetProjectsQuery } from '../redux/project-api';
+import { useGetBudgetSummaryQuery, useGetProjectOwnersQuery, useGetProjectsQuery } from '../redux/project-api';
+import { useGetCategoriesQuery } from '../redux/category-api';
 import { useGetUsersQuery } from '../redux/user-api';
 
-import { useState } from 'react';
+import { useCallback } from 'react';
 import AppPagination from './pagination';
+import ProjectFilterBar from './project-filter-bar';
+import { ProjectFilters } from './interfaces';
+import { getActiveFilters, hasActiveFilters, readPage, readProjectFilters, withFilter, withPage, withoutFilters } from '../lib/project-filters';
 import BudgetSummary from './budget-summary';
 import { formatAmount, formatDate, formatPercent } from '../lib/utils';
 import { Badge } from './ui/badge';
@@ -15,15 +18,32 @@ import ErrorState from './error-state';
 const ITEMS_PER_PAGE = 6;
 
 const ShowProjects = () => {
-  const [currentPage, setCurrentPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filters = readProjectFilters(searchParams);
+  const filtersActive = hasActiveFilters(filters);
+  const currentPage = readPage(searchParams);
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-  const { data: projectsData, isLoading: projectsLoading } = useGetProjectsQuery({ offset, limit: ITEMS_PER_PAGE });
+  const { data: projectsData, isLoading: projectsLoading } = useGetProjectsQuery({ offset, limit: ITEMS_PER_PAGE, ...getActiveFilters(filters) });
+  const { data: categories = [] } = useGetCategoriesQuery();
+  const { data: owners = [] } = useGetProjectOwnersQuery();
   const { data: users = [], isLoading: usersLoading } = useGetUsersQuery();
   // Financial data is edited through another API slice, so refetch whenever the dashboard opens
   const { data: summary, isError: summaryError, refetch: refetchSummary } = useGetBudgetSummaryQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const projects = projectsData?.data || [];
   const totalItems = projectsData?.pagination.totalItems || 0;
+
+  const changeFilter = useCallback((key: keyof ProjectFilters, value: string) => {
+    setSearchParams((params) => withFilter(params, key, value));
+  }, [setSearchParams]);
+
+  const clearFilters = () => {
+    setSearchParams((params) => withoutFilters(params));
+  };
+
+  const changePage = (page: number) => {
+    setSearchParams((params) => withPage(params, page));
+  };
 
   if (projectsLoading || usersLoading) {
     return <div>Loading...</div>;
@@ -38,16 +58,27 @@ const ShowProjects = () => {
       {summaryError ? (
         <ErrorState message="Couldn't load the budget summary." onRetry={refetchSummary} className="rounded-lg border border-destructive/50 p-4" />
       ) : summary && <BudgetSummary summary={summary} />}
-      <form>
-        <div className="relative">
-          <Input
-            type="search"
-            placeholder="Search projects..."
-            className="w-full appearance-none bg-background pl-8 shadow-none md:w-2/3 lg:w-1/3"
-          />
+      <ProjectFilterBar
+        filters={filters}
+        categories={categories}
+        owners={owners}
+        onChange={changeFilter}
+        onClear={clearFilters}
+        canClear={filtersActive}
+      />
+      {projects.length === 0 && filtersActive ? (
+        <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed p-8 shadow-sm">
+          <div className="flex flex-col items-center gap-1 text-center">
+            <h3 className="text-2xl font-bold tracking-tight">
+              No projects match your filters
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Try a different search or clear the filters to see all projects.
+            </p>
+            <Button className="mt-4" onClick={clearFilters}>Clear filters</Button>
+          </div>
         </div>
-      </form>
-      {projects.length === 0 ? (
+      ) : projects.length === 0 ? (
         <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm">
           <div className="flex flex-col items-center gap-1 text-center">
             <h3 className="text-2xl font-bold tracking-tight">
@@ -112,7 +143,7 @@ const ShowProjects = () => {
         currentPage={currentPage}
         totalItems={totalItems}
         itemsPerPage={ITEMS_PER_PAGE}
-        onPageChange={setCurrentPage}
+        onPageChange={changePage}
       />
       
     </main>

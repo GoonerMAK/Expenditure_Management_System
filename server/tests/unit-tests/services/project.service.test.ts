@@ -160,8 +160,28 @@ describe('project.service', () => {
 
       await projectService.getAllProjects(12, 6);
 
-      expect(repo.getAllProjects).toHaveBeenCalledWith(12, 6);
-      expect(repo.getProjectsCount).toHaveBeenCalledTimes(1);
+      expect(repo.getAllProjects).toHaveBeenCalledWith(12, 6, {}, undefined);
+      expect(repo.getProjectsCount).toHaveBeenCalledWith({});
+    });
+
+    it('passes the filters to both queries and the sort to the page query', async () => {
+      const filters = { search: 'bridge', category: OTHER_ID, owner: ID, from: START, to: END };
+      repo.getAllProjects.mockResolvedValue([]);
+      repo.getProjectsCount.mockResolvedValue(0);
+
+      await projectService.getAllProjects(0, 6, filters, 'spend_desc');
+
+      expect(repo.getAllProjects).toHaveBeenCalledWith(0, 6, filters, 'spend_desc');
+      expect(repo.getProjectsCount).toHaveBeenCalledWith(filters);
+    });
+
+    it('bases the pagination on the filtered count', async () => {
+      repo.getAllProjects.mockResolvedValue([buildProject()]);
+      repo.getProjectsCount.mockResolvedValue(7);
+
+      const { pagination } = await projectService.getAllProjects(6, 6, { search: 'bridge' });
+
+      expect(pagination).toEqual({ offset: 6, limit: 6, totalItems: 7, totalPages: 2, hasMore: false });
     });
 
     it('returns the page data with pagination metadata', async () => {
@@ -210,6 +230,49 @@ describe('project.service', () => {
       repo.getProjectsCount.mockRejectedValue(new Error('count failed'));
 
       await expect(projectService.getAllProjects(0, 6)).rejects.toThrow('Failed to fetch projects: Error: count failed');
+    });
+  });
+
+  describe('getProjectOwners', () => {
+    it('uses the username as the display name', async () => {
+      repo.getProjectOwners.mockResolvedValue([{ id: ID, username: 'jdoe', name: 'John Doe', email: 'jdoe@example.com' }]);
+
+      await expect(projectService.getProjectOwners()).resolves.toEqual([{ id: ID, display_name: 'jdoe' }]);
+    });
+
+    it('falls back to the name and then the email', async () => {
+      repo.getProjectOwners.mockResolvedValue([
+        { id: ID, username: null, name: 'John Doe', email: 'jdoe@example.com' },
+        { id: OTHER_ID, username: '', name: null, email: 'amy@example.com' },
+      ]);
+
+      await expect(projectService.getProjectOwners()).resolves.toEqual([
+        { id: OTHER_ID, display_name: 'amy@example.com' },
+        { id: ID, display_name: 'John Doe' },
+      ]);
+    });
+
+    it('sorts the owners by display name', async () => {
+      repo.getProjectOwners.mockResolvedValue([
+        { id: ID, username: 'zara', name: null, email: 'zara@example.com' },
+        { id: OTHER_ID, username: 'adam', name: null, email: 'adam@example.com' },
+      ]);
+
+      const owners = await projectService.getProjectOwners();
+
+      expect(owners.map((owner) => owner.display_name)).toEqual(['adam', 'zara']);
+    });
+
+    it('returns an empty list when no project has an owner', async () => {
+      repo.getProjectOwners.mockResolvedValue([]);
+
+      await expect(projectService.getProjectOwners()).resolves.toEqual([]);
+    });
+
+    it('wraps a repository error', async () => {
+      repo.getProjectOwners.mockRejectedValue(new Error('timeout'));
+
+      await expect(projectService.getProjectOwners()).rejects.toThrow('Failed to fetch project owners: Error: timeout');
     });
   });
 

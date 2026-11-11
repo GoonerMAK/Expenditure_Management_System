@@ -36,6 +36,50 @@ describe("---------------- project financial data routes ----------------", () =
     });
 
 
+    describe("GET /api/projects with filters", () => {
+
+        it("should return the filtered page with pagination and success code 200", async () => {
+            const response = await request.get('/api/projects?search=bridge&sort=spend_desc&from=2024-01-01&to=2024-12-31').set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(200);
+            expect(response.body.data).toBeInstanceOf(Array);
+            expect(response.body.pagination).toHaveProperty('totalItems');
+        });
+
+        it("should return 400 for an unknown sort", async () => {
+            const response = await request.get('/api/projects?sort=budget').set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(400);
+            expect(response.body.message).toContain('Sort must be one of');
+        });
+
+        it("should return 400 for a bad date", async () => {
+            const response = await request.get('/api/projects?from=not-a-date').set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('From date must be a valid date in YYYY-MM-DD format');
+        });
+
+        it("should return 400 when from is after to", async () => {
+            const response = await request.get('/api/projects?from=2024-06-02&to=2024-06-01').set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('From date must be on or before the To date');
+        });
+    });
+
+
+    describe("GET /api/projects/owners", () => {
+
+        it("should return success code 200 and the project owners", async () => {
+            const response = await request.get('/api/projects/owners').set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(200);
+            expect(response.body).toBeInstanceOf(Array);
+        });
+
+        it("should return 401 without a session", async () => {
+            const response = await request.get('/api/projects/owners');
+            expect(response.status).toBe(401);
+        });
+    });
+
+
     describe("POST /api/projects", () => {
 
         it("should create a new project and return success code 201", async () => {
