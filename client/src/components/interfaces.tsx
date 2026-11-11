@@ -23,6 +23,8 @@ export interface FinancialData {
     project_name?: string;
 }
 
+export type ExpenseStatus = 'Pending' | 'Approved' | 'Rejected';
+
 export interface ExpenseEntry {
     id: string;
     project_id: string;
@@ -33,6 +35,11 @@ export interface ExpenseEntry {
     receipt_name: string | null;
     receipt_type: string | null;
     has_receipt: boolean;
+    status: ExpenseStatus;
+    rejection_reason: string | null;
+    reviewed_by_id: string | null;
+    reviewed_by_name: string | null;
+    reviewed_at: string | null;
     created_at: string;
     updated_at: string;
 }

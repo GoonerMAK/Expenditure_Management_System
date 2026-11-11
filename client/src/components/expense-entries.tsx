@@ -1,19 +1,22 @@
 import { Fragment, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Check, Pencil, Trash2, X } from 'lucide-react';
 
-import { ExpenseEntry } from './interfaces';
+import { ExpenseEntry, ExpenseStatus } from './interfaces';
 import { formatAmount, formatDay, formatMonth, getServerMessage, getYearMonth } from '../lib/utils';
 import {
   getReceiptUrl,
   useAddExpenseMutation,
+  useApproveExpenseMutation,
   useDeleteExpenseMutation,
   useGetProjectExpensesQuery,
+  useRejectExpenseMutation,
   useUpdateExpenseMutation,
 } from '../redux/financial-data-api';
 
 import ErrorState from './error-state';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
@@ -44,11 +47,24 @@ interface MonthGroup {
   key: string;
   year: number;
   month: number;
-  total: number;
+  approved: number;
+  pending: number;
   entries: ExpenseEntry[];
 }
 
+interface ExpenseEntriesProps {
+  projectId: string;
+  canEdit: boolean;
+  canReview?: boolean;
+}
+
 const RECEIPT_TYPES = 'application/pdf,image/jpeg,image/png,image/webp';
+
+const STATUS_STYLES: Record<ExpenseStatus, string> = {
+  Pending: 'border-transparent bg-amber-100 text-amber-800',
+  Approved: 'border-transparent bg-green-100 text-green-800',
+  Rejected: 'border-transparent bg-red-100 text-red-800',
+};
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -84,22 +100,33 @@ const groupByMonth = (entries: ExpenseEntry[]): MonthGroup[] => {
   for (const entry of entries) {
     const { year, month } = getYearMonth(entry.date);
     const key = `${year}-${month}`;
-    const group = groups.get(key) ?? { key, year, month, total: 0, entries: [] };
-    group.total += entry.amount;
+    const group = groups.get(key) ?? { key, year, month, approved: 0, pending: 0, entries: [] };
+    if (entry.status === 'Approved') group.approved += entry.amount;
+    if (entry.status === 'Pending') group.pending += entry.amount;
     group.entries.push(entry);
     groups.set(key, group);
   }
   return [...groups.values()];
 };
 
-const ExpenseEntries = ({ projectId, canEdit }: { projectId: string; canEdit: boolean }) => {
+const deleteMessage = (entry: ExpenseEntry) => {
+  const summary = `${entry.vendor}, ${formatAmount(entry.amount)} on ${formatDay(entry.date)}.`;
+  if (entry.status === 'Approved') return `${summary} The month's expenditure goes down by this amount and its receipt is deleted.`;
+  return `${summary} Its receipt is deleted.`;
+};
+
+const ExpenseEntries = ({ projectId, canEdit, canReview = false }: ExpenseEntriesProps) => {
   const { data: entries, error, isLoading, refetch } = useGetProjectExpensesQuery(projectId);
   const [addExpense, { isLoading: adding }] = useAddExpenseMutation();
   const [updateExpense, { isLoading: updating }] = useUpdateExpenseMutation();
   const [deleteExpense] = useDeleteExpenseMutation();
+  const [approveExpense] = useApproveExpenseMutation();
+  const [rejectExpense] = useRejectExpenseMutation();
 
   const [editing, setEditing] = useState<ExpenseEntry | null>(null);
   const [toDelete, setToDelete] = useState<ExpenseEntry | null>(null);
+  const [toReject, setToReject] = useState<ExpenseEntry | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [fileInputKey, setFileInputKey] = useState(0);
 
   const form = useForm<EntryFormValues>({ defaultValues: emptyForm() });
@@ -144,13 +171,40 @@ const ExpenseEntries = ({ projectId, canEdit }: { projectId: string; canEdit: bo
     }
   };
 
+  const approve = async (entry: ExpenseEntry) => {
+    try {
+      await approveExpense({ id: entry.id, projectId }).unwrap();
+      toast.success('Expense entry approved');
+    } catch (error) {
+      toast.error(getServerMessage(error) ?? 'Failed to approve expense entry');
+    }
+  };
+
+  const startRejecting = (entry: ExpenseEntry) => {
+    setRejectionReason('');
+    setToReject(entry);
+  };
+
+  const confirmReject = async () => {
+    if (!toReject) return;
+    const entry = toReject;
+    setToReject(null);
+    try {
+      await rejectExpense({ id: entry.id, projectId, rejection_reason: rejectionReason }).unwrap();
+      toast.success('Expense entry rejected');
+    } catch (error) {
+      toast.error(getServerMessage(error) ?? 'Failed to reject expense entry');
+    }
+  };
+
   const groups = groupByMonth(entries ?? []);
+  const showActions = canEdit || canReview;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Expense entries</CardTitle>
-        <p className="text-sm text-muted-foreground">Each month's expenditure is the sum of its entries.</p>
+        <p className="text-sm text-muted-foreground">Each month's expenditure is the sum of its approved entries.</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {canEdit && (
@@ -253,9 +307,10 @@ const ExpenseEntries = ({ projectId, canEdit }: { projectId: string; canEdit: bo
                 />
               )}
 
-              <div className="flex gap-2 sm:col-span-2">
+              <div className="flex items-center gap-2 sm:col-span-2">
                 <Button type="submit" disabled={adding || updating}>{editing ? 'Save entry' : 'Add entry'}</Button>
                 {editing && <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>}
+                {!canReview && <p className="text-xs text-muted-foreground">Entries count toward the totals once an Administrator approves them.</p>}
               </div>
             </form>
           </Form>
@@ -272,8 +327,9 @@ const ExpenseEntries = ({ projectId, canEdit }: { projectId: string; canEdit: bo
                 <TableHead>Date</TableHead>
                 <TableHead>Vendor</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Receipt</TableHead>
-                {canEdit && <TableHead><span className="sr-only">Actions</span></TableHead>}
+                {showActions && <TableHead><span className="sr-only">Actions</span></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -281,8 +337,11 @@ const ExpenseEntries = ({ projectId, canEdit }: { projectId: string; canEdit: bo
                 <Fragment key={group.key}>
                   <TableRow className="bg-muted/50 font-medium">
                     <TableCell colSpan={2}>{formatMonth(group.year, group.month)}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">{formatAmount(group.total)}</TableCell>
-                    <TableCell colSpan={canEdit ? 2 : 1} />
+                    <TableCell className="text-right whitespace-nowrap">
+                      {formatAmount(group.approved)}
+                      {group.pending > 0 && <p className="text-xs font-normal text-muted-foreground">{formatAmount(group.pending)} pending</p>}
+                    </TableCell>
+                    <TableCell colSpan={showActions ? 3 : 2} />
                   </TableRow>
                   {group.entries.map((entry) => (
                     <TableRow key={entry.id}>
@@ -293,6 +352,15 @@ const ExpenseEntries = ({ projectId, canEdit }: { projectId: string; canEdit: bo
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">{formatAmount(entry.amount)}</TableCell>
                       <TableCell>
+                        <Badge variant="outline" className={STATUS_STYLES[entry.status]}>{entry.status}</Badge>
+                        {entry.status === 'Rejected' && entry.rejection_reason && (
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">Reason: {entry.rejection_reason}</p>
+                        )}
+                        {entry.status !== 'Pending' && entry.reviewed_by_name && (
+                          <p className="text-xs text-muted-foreground">by {entry.reviewed_by_name}</p>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         {entry.has_receipt ? (
                           <a href={getReceiptUrl(entry.id)} target="_blank" rel="noreferrer" title={entry.receipt_name ?? undefined} className="block max-w-[120px] truncate text-primary underline-offset-4 hover:underline">
                             {entry.receipt_name ?? 'View'}
@@ -301,15 +369,29 @@ const ExpenseEntries = ({ projectId, canEdit }: { projectId: string; canEdit: bo
                           <span className="text-muted-foreground">None</span>
                         )}
                       </TableCell>
-                      {canEdit && (
+                      {showActions && (
                         <TableCell>
                           <div className="flex justify-end">
-                            <Button size="icon" variant="ghost" onClick={() => startEditing(entry)} aria-label={`Edit ${entry.vendor} entry`} title="Edit">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setToDelete(entry)} aria-label={`Delete ${entry.vendor} entry`} title="Delete">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canReview && entry.status !== 'Approved' && (
+                              <Button size="icon" variant="ghost" className="text-green-700 hover:text-green-700" onClick={() => approve(entry)} aria-label={`Approve ${entry.vendor} entry`} title="Approve">
+                                <Check className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canReview && entry.status !== 'Rejected' && (
+                              <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => startRejecting(entry)} aria-label={`Reject ${entry.vendor} entry`} title="Reject">
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canEdit && (
+                              <Button size="icon" variant="ghost" onClick={() => startEditing(entry)} aria-label={`Edit ${entry.vendor} entry`} title="Edit">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canEdit && (
+                              <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setToDelete(entry)} aria-label={`Delete ${entry.vendor} entry`} title="Delete">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       )}
@@ -327,12 +409,35 @@ const ExpenseEntries = ({ projectId, canEdit }: { projectId: string; canEdit: bo
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this expense entry?</AlertDialogTitle>
             <AlertDialogDescription>
-              {toDelete && `${toDelete.vendor}, ${formatAmount(toDelete.amount)} on ${formatDay(toDelete.date)}. The month's expenditure goes down by this amount and its receipt is deleted.`}
+              {toDelete && deleteMessage(toDelete)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={toReject !== null} onOpenChange={(open) => !open && setToReject(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject this expense entry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toReject && `${toReject.vendor}, ${formatAmount(toReject.amount)} on ${formatDay(toReject.date)}. It will not count toward the month's expenditure.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label htmlFor="rejection-reason" className="text-sm font-medium">Reason (optional)</label>
+          <Textarea
+            id="rejection-reason"
+            className="resize-none"
+            maxLength={1000}
+            value={rejectionReason}
+            onChange={(event) => setRejectionReason(event.target.value)}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmReject}>Reject</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

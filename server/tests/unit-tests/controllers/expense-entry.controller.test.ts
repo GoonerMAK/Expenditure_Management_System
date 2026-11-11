@@ -9,6 +9,10 @@ const service = jest.mocked(expenseEntryService);
 
 const date = new Date('2026-03-12T00:00:00.000Z');
 
+const USER_ID = 'c4d5e6f7-1a2b-4c3d-8e9f-0a1b2c3d4e5f';
+
+const user = { id: USER_ID };
+
 const entry = {
   id: ID,
   project_id: OTHER_ID,
@@ -18,7 +22,12 @@ const entry = {
   notes: null,
   receipt_name: null,
   receipt_type: null,
+  status: 'Pending' as const,
+  rejection_reason: null,
+  reviewed_by_id: null,
+  reviewed_at: null,
   has_receipt: false,
+  reviewed_by_name: null,
   created_at: NOW,
   updated_at: NOW,
 };
@@ -81,21 +90,21 @@ describe('expense-entry.controller', () => {
     it('responds 201 and passes the fields and the uploaded receipt', async () => {
       service.createExpenseEntry.mockResolvedValue(entry);
       const res = mockResponse();
-      const req = mockRequest({ body: { ...body, extra: 'ignored' } });
+      const req = mockRequest({ body: { ...body, extra: 'ignored' }, user });
       req.file = file;
 
       await expenseEntryController.createExpenseEntry(req, res);
 
-      expect(service.createExpenseEntry).toHaveBeenCalledWith(body, file);
+      expect(service.createExpenseEntry).toHaveBeenCalledWith(body, USER_ID, file);
       expectResponse(res, 201, entry);
     });
 
     it('passes no receipt when no file was uploaded', async () => {
       service.createExpenseEntry.mockResolvedValue(entry);
 
-      await expenseEntryController.createExpenseEntry(mockRequest({ body }), mockResponse());
+      await expenseEntryController.createExpenseEntry(mockRequest({ body, user }), mockResponse());
 
-      expect(service.createExpenseEntry).toHaveBeenCalledWith(body, undefined);
+      expect(service.createExpenseEntry).toHaveBeenCalledWith(body, USER_ID, undefined);
     });
 
     it('responds 404 when the project does not exist', async () => {
@@ -121,7 +130,7 @@ describe('expense-entry.controller', () => {
     it('responds 200 and passes the id, changes and receipt', async () => {
       service.updateExpenseEntry.mockResolvedValue(entry);
       const res = mockResponse();
-      const req = mockRequest({ params: { id: ID }, body: { amount: 300, remove_receipt: false } });
+      const req = mockRequest({ params: { id: ID }, body: { amount: 300, remove_receipt: false }, user });
       req.file = file;
 
       await expenseEntryController.updateExpenseEntry(req, res);
@@ -129,6 +138,7 @@ describe('expense-entry.controller', () => {
       expect(service.updateExpenseEntry).toHaveBeenCalledWith(
         ID,
         { date: undefined, vendor: undefined, amount: 300, notes: undefined, remove_receipt: false },
+        USER_ID,
         file,
       );
       expectResponse(res, 200, entry);
@@ -148,6 +158,76 @@ describe('expense-entry.controller', () => {
       const res = mockResponse();
 
       await expenseEntryController.updateExpenseEntry(mockRequest({ params: { id: ID }, body: {} }), res);
+
+      expectResponse(res, 500, { error: 'boom' });
+    });
+  });
+
+  describe('approveExpenseEntry', () => {
+    it('responds 200 and passes the id and the reviewer', async () => {
+      const approved = { ...entry, status: 'Approved' as const };
+      service.approveExpenseEntry.mockResolvedValue(approved);
+      const res = mockResponse();
+
+      await expenseEntryController.approveExpenseEntry(mockRequest({ params: { id: ID }, user }), res);
+
+      expect(service.approveExpenseEntry).toHaveBeenCalledWith(ID, USER_ID);
+      expectResponse(res, 200, approved);
+    });
+
+    it('responds 404 when the entry does not exist', async () => {
+      service.approveExpenseEntry.mockResolvedValue(null);
+      const res = mockResponse();
+
+      await expenseEntryController.approveExpenseEntry(mockRequest({ params: { id: ID }, user }), res);
+
+      expectResponse(res, 404, { error: `Expense entry with id ${ID} not found` });
+    });
+
+    it('responds 500 with the service error message', async () => {
+      service.approveExpenseEntry.mockRejectedValue(new Error('boom'));
+      const res = mockResponse();
+
+      await expenseEntryController.approveExpenseEntry(mockRequest({ params: { id: ID }, user }), res);
+
+      expectResponse(res, 500, { error: 'boom' });
+    });
+  });
+
+  describe('rejectExpenseEntry', () => {
+    it('responds 200 and passes the id, the reviewer and the reason', async () => {
+      const rejected = { ...entry, status: 'Rejected' as const, rejection_reason: 'No receipt' };
+      service.rejectExpenseEntry.mockResolvedValue(rejected);
+      const res = mockResponse();
+
+      await expenseEntryController.rejectExpenseEntry(mockRequest({ params: { id: ID }, body: { rejection_reason: 'No receipt' }, user }), res);
+
+      expect(service.rejectExpenseEntry).toHaveBeenCalledWith(ID, USER_ID, 'No receipt');
+      expectResponse(res, 200, rejected);
+    });
+
+    it('passes no reason when none was given', async () => {
+      service.rejectExpenseEntry.mockResolvedValue(entry);
+
+      await expenseEntryController.rejectExpenseEntry(mockRequest({ params: { id: ID }, user }), mockResponse());
+
+      expect(service.rejectExpenseEntry).toHaveBeenCalledWith(ID, USER_ID, undefined);
+    });
+
+    it('responds 404 when the entry does not exist', async () => {
+      service.rejectExpenseEntry.mockResolvedValue(null);
+      const res = mockResponse();
+
+      await expenseEntryController.rejectExpenseEntry(mockRequest({ params: { id: ID }, user }), res);
+
+      expectResponse(res, 404, { error: `Expense entry with id ${ID} not found` });
+    });
+
+    it('responds 500 with the service error message', async () => {
+      service.rejectExpenseEntry.mockRejectedValue(new Error('boom'));
+      const res = mockResponse();
+
+      await expenseEntryController.rejectExpenseEntry(mockRequest({ params: { id: ID }, user }), res);
 
       expectResponse(res, 500, { error: 'boom' });
     });

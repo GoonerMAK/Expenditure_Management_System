@@ -158,6 +158,7 @@ const SingleProject = () => {
 
 
     const canEdit = user?.role_name !== "Read-only";
+    const canReview = user?.role_name === "Administrator";
 
     const [formYear, formMonth] = form.watch(['year', 'month']);
     const expenditureFromEntries = (expenseEntries ?? []).some((entry) => {
@@ -459,7 +460,7 @@ const SingleProject = () => {
                 </Form>
             </div>
             <div className="flex-1 min-w-0">
-                <ExpenseEntries projectId={id!} canEdit={canEdit} />
+                <ExpenseEntries projectId={id!} canEdit={canEdit} canReview={canReview} />
             </div>
         </div>
     );

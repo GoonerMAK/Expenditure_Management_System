@@ -81,6 +81,23 @@ export const financialDataApi = createApi({
       invalidatesTags: (_result, _error, { projectId }) => expenseTags(projectId),
     }),
 
+    approveExpense: builder.mutation<ExpenseEntry, { id: string; projectId: string }>({
+      query: ({ id }) => ({
+        url: `expenses/${id}/approve`,
+        method: 'post',
+      }),
+      invalidatesTags: (_result, _error, { projectId }) => expenseTags(projectId),
+    }),
+
+    rejectExpense: builder.mutation<ExpenseEntry, { id: string; projectId: string; rejection_reason: string }>({
+      query: ({ id, rejection_reason }) => ({
+        url: `expenses/${id}/reject`,
+        method: 'post',
+        body: { rejection_reason },
+      }),
+      invalidatesTags: (_result, _error, { projectId }) => expenseTags(projectId),
+    }),
+
     deleteExpense: builder.mutation<ExpenseEntry, { id: string; projectId: string }>({
       query: ({ id }) => ({
         url: `expenses/${id}`,
@@ -95,4 +112,5 @@ export const financialDataApi = createApi({
 export const {
   useGetFinancialDataQuery, useGetFinancialDataByIdQuery, useAddFinancialDataMutation, useUpdateFinancialDataMutation,
   useGetProjectExpensesQuery, useAddExpenseMutation, useUpdateExpenseMutation, useDeleteExpenseMutation,
+  useApproveExpenseMutation, useRejectExpenseMutation,
 } = financialDataApi;

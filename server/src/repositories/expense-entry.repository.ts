@@ -1,5 +1,5 @@
 import prisma from '../db.js';
-import { Prisma } from '@prisma/client';
+import { ExpenseStatus, Prisma } from '@prisma/client';
 
 type Db = Prisma.TransactionClient;
 
@@ -12,9 +12,15 @@ export type ExpenseEntryData = {
     receipt_file?: string | null;
     receipt_name?: string | null;
     receipt_type?: string | null;
+    status?: ExpenseStatus;
+    rejection_reason?: string | null;
+    reviewed_by_id?: string | null;
+    reviewed_at?: Date | null;
 };
 
 export type ExpenseEntryChanges = Partial<Omit<ExpenseEntryData, 'project_id'>>;
+
+const reviewer = { reviewed_by: { select: { username: true } } };
 
 const monthOf = (date: Date) => ({ year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 });
 
@@ -25,10 +31,10 @@ const monthRange = (year: number, month: number) => ({
 
 const roundAmount = (amount: number) => Math.round(amount * 100) / 100;
 
-// Sets the month's expenditure to the sum of its expense entries, creating the month row if needed.
+// Sets the month's expenditure to the sum of its approved expense entries, creating the month row if needed.
 export const syncMonthlyExpenditure = async (db: Db, project_id: string, year: number, month: number) => {
     const { _sum } = await db.expenseEntry.aggregate({
-        where: { project_id, date: monthRange(year, month) },
+        where: { project_id, date: monthRange(year, month), status: ExpenseStatus.Approved },
         _sum: { amount: true },
     });
     const expenditure = roundAmount(_sum.amount ?? 0);
@@ -50,7 +56,7 @@ export const syncMonthIfItHasEntries = async (db: Db, project_id: string, year: 
 
 export const createExpenseEntry = async (data: ExpenseEntryData) => {
     return await prisma.$transaction(async (tx) => {
-        const entry = await tx.expenseEntry.create({ data });
+        const entry = await tx.expenseEntry.create({ data, include: reviewer });
         const { year, month } = monthOf(entry.date);
         await syncMonthlyExpenditure(tx, entry.project_id, year, month);
         return entry;
@@ -62,7 +68,7 @@ export const updateExpenseEntry = async (id: string, changes: ExpenseEntryChange
         const before = await tx.expenseEntry.findUnique({ where: { id } });
         if (!before) return null;
 
-        const entry = await tx.expenseEntry.update({ where: { id }, data: changes });
+        const entry = await tx.expenseEntry.update({ where: { id }, data: changes, include: reviewer });
         const after = monthOf(entry.date);
         const previous = monthOf(before.date);
         await syncMonthlyExpenditure(tx, entry.project_id, after.year, after.month);
@@ -92,6 +98,7 @@ export const getExpenseEntryById = async (id: string) => {
 export const getExpenseEntriesByProject = async (project_id: string) => {
     return await prisma.expenseEntry.findMany({
         where: { project_id },
+        include: reviewer,
         orderBy: [{ date: 'desc' }, { created_at: 'desc' }],
     });
 };
