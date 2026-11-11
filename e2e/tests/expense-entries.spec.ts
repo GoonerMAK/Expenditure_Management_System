@@ -23,7 +23,7 @@ const monthlySpend = async (api: APIRequestContext, projectId: string) => {
 
 test.describe('expense entries API', () => {
   test('monthly expenditure is the sum of the entries in that month', async () => {
-    const { api } = await apiAs('contributor');
+    const { api } = await apiAs('admin');
     const project = await createProjectForMonth(api, `E2E Expenses Sum ${runId()}`);
 
     const first = await addEntry(api, { project_id: project.id, date: '2026-03-05', vendor: 'Acme', amount: '100.10' });
@@ -41,7 +41,7 @@ test.describe('expense entries API', () => {
   });
 
   test('a hand-typed expenditure is replaced by the entries total', async () => {
-    const { api } = await apiAs('contributor');
+    const { api } = await apiAs('admin');
     const project = await createProjectForMonth(api, `E2E Expenses Manual ${runId()}`);
     await addEntry(api, { project_id: project.id, date: '2026-03-10', vendor: 'Acme', amount: '75' });
 
@@ -102,12 +102,12 @@ test.describe('expense entries API', () => {
 });
 
 test.describe('expense entries on the project page', () => {
-  test('a contributor adds an entry with a receipt and sees the month total', async ({ page }) => {
-    const { api } = await apiAs('contributor');
+  test('an administrator adds an entry with a receipt and sees the month total', async ({ page }) => {
+    const { api } = await apiAs('admin');
     const project = await createProjectForMonth(api, `E2E Expenses UI ${runId()}`);
     await addEntry(api, { project_id: project.id, date: '2026-03-02', vendor: 'Earlier Vendor', amount: '100' });
 
-    await loginInUi(page, 'contributor');
+    await loginInUi(page, 'admin');
     await page.goto(`/projects/${project.id}`);
 
     const form = page.getByRole('form', { name: 'Add expense entry' });
