@@ -1,6 +1,8 @@
 import supertest from "supertest";
 import { app, server } from "../../src/index";
 import jwt from 'jsonwebtoken';
+import { randomUUID } from 'crypto';
+import prisma from "../../src/db";
 
 const request = supertest(app);
 
@@ -264,6 +266,70 @@ describe("---------------- project financial data routes ----------------", () =
             const response = await request.delete('/api/projects/Th15-15-N-R4ND0M-1D')
                 .set('Cookie', `jwt=${token}`);
             expect(response.status).toBe(400);
+        });
+    });
+
+    describe("GET /api/projects/:id/history", () => {
+
+        const runId = randomUUID().slice(0, 8);
+        let adminToken: string;
+        let adminId: string;
+        let historyCategoryId: string;
+        let historyProjectId: string;
+
+        beforeAll(async () => {
+            const admin = await prisma.user.create({
+                data: {
+                    username: `history-admin-${runId}`,
+                    email: `history-admin-${runId}@example.com`,
+                    password: 'not-used',
+                    role_name: 'Administrator',
+                    role: { connectOrCreate: { where: { role_name: 'Administrator' }, create: { role_name: 'Administrator' } } },
+                },
+            });
+            adminId = admin.id;
+            adminToken = jwt.sign({ id: admin.id }, process.env.SECRET, { expiresIn: '1h' });
+            const category = await prisma.category.create({ data: { category_name: `History ${runId}` } });
+            historyCategoryId = category.id;
+        });
+
+        afterAll(async () => {
+            await prisma.project.deleteMany({ where: { id: historyProjectId } });
+            await prisma.auditLog.deleteMany({ where: { project_id: historyProjectId } });
+            await prisma.category.deleteMany({ where: { id: historyCategoryId } });
+            await prisma.user.deleteMany({ where: { id: adminId } });
+        });
+
+        it("should return the entries newest first and success code 200 after a project update", async () => {
+            const created = await request.post('/api/projects')
+                .set('Cookie', `jwt=${adminToken}`)
+                .send({ project_name: `History ${runId}`, category_id: historyCategoryId });
+            historyProjectId = created.body.id;
+            await request.put(`/api/projects/${historyProjectId}`)
+                .set('Cookie', `jwt=${adminToken}`)
+                .send({ project_name: `History ${runId} Renamed`, category_id: historyCategoryId });
+
+            const response = await request.get(`/api/projects/${historyProjectId}/history`)
+                .set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(200);
+            expect(response.body.map((entry: { action: string }) => entry.action)).toEqual(['Updated', 'Created']);
+            expect(response.body[0].user_name).toBe(`history-admin-${runId}`);
+            expect(response.body[0].changes).toContainEqual({
+                field: 'project_name',
+                from: `History ${runId}`,
+                to: `History ${runId} Renamed`,
+            });
+        });
+
+        it("should return 404 for an unknown project", async () => {
+            const response = await request.get(`/api/projects/${randomUUID()}/history`)
+                .set('Cookie', `jwt=${token}`);
+            expect(response.status).toBe(404);
+        });
+
+        it("should return 401 without a session", async () => {
+            const response = await request.get(`/api/projects/${randomUUID()}/history`);
+            expect(response.status).toBe(401);
         });
     });
 
