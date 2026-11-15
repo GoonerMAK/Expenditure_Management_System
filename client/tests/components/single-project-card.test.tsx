@@ -32,6 +32,10 @@ jest.mock('../../src/components/expense-entries', () => ({
     <div data-testid="expense-entries">{`${projectId} ${canEdit ? 'editable' : 'read-only'} ${canReview ? 'reviewer' : 'no-review'}`}</div>
   ),
 }));
+jest.mock('../../src/components/project-history', () => ({
+  __esModule: true,
+  default: ({ projectId }: { projectId: string }) => <div data-testid="project-history">{projectId}</div>,
+}));
 
 const mockedUseAuth = jest.mocked(useAuth);
 const mockedGetCategories = jest.mocked(useGetCategoriesQuery);
@@ -229,6 +233,18 @@ describe('SingleProject (single project card)', () => {
 
     expect(mockedGetExpenses).toHaveBeenCalledWith('p1');
     expect(screen.getByTestId('expense-entries')).toHaveTextContent('p1 editable');
+  });
+
+  it('shows the history for the route project', () => {
+    setup();
+
+    expect(screen.getByTestId('project-history')).toHaveTextContent('p1');
+  });
+
+  it('shows the history to Read-only users too', () => {
+    setup({ role: 'Read-only' });
+
+    expect(screen.getByTestId('project-history')).toHaveTextContent('p1');
   });
 
   it('shows the expense entries read-only to Read-only users', () => {

@@ -32,7 +32,9 @@ export const updateProject = async (req: Request<ProjectParams, unknown, Project
             category_id,
             category_name,
             start_date,
-            end_date
+            end_date,
+            undefined,
+            req.user?.id
         );
         if (!updatedProject) {
             res.status(404).json({ error: `Project with id ${id} not found` });
@@ -47,7 +49,7 @@ export const updateProject = async (req: Request<ProjectParams, unknown, Project
 export const deleteProject = async (req: Request<ProjectParams, unknown, Project, unknown>, res: Response) => {
     const { id } = req.params;
     try {
-        const deletedProject = await projectService.deleteProject(id);
+        const deletedProject = await projectService.deleteProject(id, req.user?.id);
         if (!deletedProject) {
             res.status(404).json({ error: `Project with id ${id} not found` });
         } else {
@@ -91,6 +93,20 @@ export const getProjectById = async (req: Request<ProjectParams, unknown, unknow
     }
 };
 
+
+export const getProjectHistory = async (req: Request<ProjectParams, unknown, unknown, unknown>, res: Response) => {
+    const { id } = req.params;
+    try {
+        const history = await projectService.getProjectHistory(id);
+        if (!history) {
+            res.status(404).json({ error: `Project with id ${id} not found` });
+        } else {
+            res.status(200).json(history);
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 export const getBudgetSummary = async (_req: Request<unknown, unknown, unknown, unknown>, res: Response) => {
     try {

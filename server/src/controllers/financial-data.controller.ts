@@ -5,7 +5,7 @@ import { FinancialData, FinancialDataParams } from '../validators/financial-data
 export const createFinancialData = async (req: Request<unknown, unknown, FinancialData, unknown>, res: Response) => {
     const { year, month, expenditure, initial_budget, revised_budget, project_id, project_name } = req.body;
     try {
-        const financialData = await financialDataService.createFinancialData(year, month, expenditure, initial_budget, revised_budget, project_id, project_name);
+        const financialData = await financialDataService.createFinancialData(year, month, expenditure, initial_budget, revised_budget, project_id, project_name, req.user?.id);
         res.status(201).json(financialData);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -16,7 +16,7 @@ export const updateFinancialData = async (req: Request<FinancialDataParams, unkn
     const { id } = req.params;
     const { year, month, expenditure, initial_budget, revised_budget, project_id, project_name } = req.body;
     try {
-        const updatedFinancialData = await financialDataService.updateFinancialData(id, year, month, expenditure, initial_budget, revised_budget, project_id, project_name);
+        const updatedFinancialData = await financialDataService.updateFinancialData(id, year, month, expenditure, initial_budget, revised_budget, project_id, project_name, req.user?.id);
         if (!updatedFinancialData) {
             res.status(404).json({ error: `Financial data with id ${id} not found` });
         } else {
@@ -30,7 +30,7 @@ export const updateFinancialData = async (req: Request<FinancialDataParams, unkn
 export const deleteFinancialData = async (req: Request<FinancialDataParams, unknown, unknown, unknown>, res: Response) => {
     const { id } = req.params;
     try {
-        const deletedFinancialData = await financialDataService.deleteFinancialData(id);
+        const deletedFinancialData = await financialDataService.deleteFinancialData(id, req.user?.id);
         if (!deletedFinancialData) {
             res.status(404).json({ error: `Financial data with id ${id} not found` });
         } else {

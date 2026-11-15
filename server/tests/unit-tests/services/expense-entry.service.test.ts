@@ -119,7 +119,7 @@ describe('expense-entry.service', () => {
       const result = await expenseEntryService.createExpenseEntry(input, USER_ID);
 
       expect(storage.saveReceipt).not.toHaveBeenCalled();
-      expect(repo.createExpenseEntry).toHaveBeenCalledWith({ ...input, ...pending });
+      expect(repo.createExpenseEntry).toHaveBeenCalledWith({ ...input, ...pending }, USER_ID);
       expect(result).toEqual(publicEntry({ receipt_name: null, receipt_type: null, has_receipt: false }));
     });
 
@@ -130,7 +130,7 @@ describe('expense-entry.service', () => {
       const result = await expenseEntryService.createExpenseEntry(input, USER_ID);
 
       expect(users.getUserWithRole).toHaveBeenCalledWith(USER_ID);
-      expect(repo.createExpenseEntry).toHaveBeenCalledWith(expect.objectContaining(pending));
+      expect(repo.createExpenseEntry).toHaveBeenCalledWith(expect.objectContaining(pending), USER_ID);
       expect(result?.status).toBe('Pending');
     });
 
@@ -147,7 +147,7 @@ describe('expense-entry.service', () => {
         rejection_reason: null,
         reviewed_by_id: USER_ID,
         reviewed_at: expect.any(Date),
-      });
+      }, USER_ID);
     });
 
     it('treats a user without a role as a Contributor', async () => {
@@ -157,7 +157,7 @@ describe('expense-entry.service', () => {
 
       await expenseEntryService.createExpenseEntry(input, USER_ID);
 
-      expect(repo.createExpenseEntry).toHaveBeenCalledWith(expect.objectContaining(pending));
+      expect(repo.createExpenseEntry).toHaveBeenCalledWith(expect.objectContaining(pending), USER_ID);
     });
 
     it('saves the receipt and stores its file, name and type', async () => {
@@ -175,7 +175,7 @@ describe('expense-entry.service', () => {
         receipt_name: 'photo.png',
         receipt_type: 'image/png',
         ...pending,
-      });
+      }, USER_ID);
       expect(result).toEqual(publicEntry({ receipt_name: 'photo.png', receipt_type: 'image/png' }));
     });
 
@@ -222,7 +222,7 @@ describe('expense-entry.service', () => {
 
       const result = await expenseEntryService.updateExpenseEntry(ID, { amount: 300, remove_receipt: false }, USER_ID);
 
-      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { amount: 300, ...pending });
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { amount: 300, ...pending }, USER_ID);
       expect(storage.deleteReceipt).not.toHaveBeenCalled();
       expect(result).toEqual(publicEntry({ amount: 300 }));
     });
@@ -233,7 +233,7 @@ describe('expense-entry.service', () => {
 
       const result = await expenseEntryService.updateExpenseEntry(ID, { vendor: 'Acme', remove_receipt: false }, USER_ID);
 
-      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { vendor: 'Acme', ...pending });
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { vendor: 'Acme', ...pending }, USER_ID);
       expect(result?.status).toBe('Pending');
     });
 
@@ -244,7 +244,7 @@ describe('expense-entry.service', () => {
 
       await expenseEntryService.updateExpenseEntry(ID, { amount: 300, remove_receipt: false }, USER_ID);
 
-      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { amount: 300 });
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { amount: 300 }, USER_ID);
     });
 
     it('replaces the receipt and removes the old file', async () => {
@@ -260,7 +260,7 @@ describe('expense-entry.service', () => {
         receipt_name: 'photo.png',
         receipt_type: 'image/png',
         ...pending,
-      });
+      }, USER_ID);
       expect(storage.deleteReceipt).toHaveBeenCalledWith(OLD_FILE);
     });
 
@@ -270,7 +270,7 @@ describe('expense-entry.service', () => {
 
       const result = await expenseEntryService.updateExpenseEntry(ID, { remove_receipt: true }, USER_ID);
 
-      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { receipt_file: null, receipt_name: null, receipt_type: null, ...pending });
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, { receipt_file: null, receipt_name: null, receipt_type: null, ...pending }, USER_ID);
       expect(storage.deleteReceipt).toHaveBeenCalledWith(OLD_FILE);
       expect(result?.has_receipt).toBe(false);
     });
@@ -324,7 +324,7 @@ describe('expense-entry.service', () => {
         rejection_reason: null,
         reviewed_by_id: USER_ID,
         reviewed_at: expect.any(Date),
-      });
+      }, USER_ID, 'Approved');
       expect(result).toEqual(publicEntry({ reviewed_by_id: USER_ID, reviewed_by_name: 'admin' }));
     });
 
@@ -354,7 +354,7 @@ describe('expense-entry.service', () => {
         rejection_reason: 'No receipt',
         reviewed_by_id: USER_ID,
         reviewed_at: expect.any(Date),
-      });
+      }, USER_ID, 'Rejected');
       expect(result).toEqual(
         publicEntry({ status: 'Rejected', rejection_reason: 'No receipt', reviewed_by_id: USER_ID, reviewed_by_name: 'admin' }),
       );
@@ -365,7 +365,7 @@ describe('expense-entry.service', () => {
 
       await expenseEntryService.rejectExpenseEntry(ID, USER_ID);
 
-      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, expect.objectContaining({ status: 'Rejected', rejection_reason: null }));
+      expect(repo.updateExpenseEntry).toHaveBeenCalledWith(ID, expect.objectContaining({ status: 'Rejected', rejection_reason: null }), USER_ID, 'Rejected');
     });
 
     it('returns null when the entry does not exist', async () => {
@@ -385,9 +385,9 @@ describe('expense-entry.service', () => {
     it('deletes the entry and its receipt file', async () => {
       repo.deleteExpenseEntry.mockResolvedValue(buildExpenseEntry());
 
-      const result = await expenseEntryService.deleteExpenseEntry(ID);
+      const result = await expenseEntryService.deleteExpenseEntry(ID, USER_ID);
 
-      expect(repo.deleteExpenseEntry).toHaveBeenCalledWith(ID);
+      expect(repo.deleteExpenseEntry).toHaveBeenCalledWith(ID, USER_ID);
       expect(storage.deleteReceipt).toHaveBeenCalledWith(OLD_FILE);
       expect(result).toEqual(publicEntry());
     });

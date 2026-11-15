@@ -13,6 +13,7 @@ projectRouter.get('/projects', isAuthenticated, validateQuery(projectListQuerySc
 projectRouter.get('/projects/owners', isAuthenticated, projectController.getProjectOwners);
 projectRouter.get('/projects/summary', isAuthenticated, projectController.getBudgetSummary);
 projectRouter.get('/projects/summary/categories', isAuthenticated, projectController.getBudgetByCategory);
+projectRouter.get('/projects/:id/history', isAuthenticated, validateParams(projectParamsSchema), projectController.getProjectHistory);
 projectRouter.get('/projects/:id/trend', isAuthenticated, validateParams(projectParamsSchema), projectController.getProjectTrend);
 projectRouter.get('/projects/:id', isAuthenticated, validateParams(projectParamsSchema), projectController.getProjectById);
 

@@ -1,6 +1,6 @@
 import * as financialDataService from '../../../src/services/financial-data.service.js';
 import * as financialDataRepository from '../../../src/repositories/financial-data.repository.js';
-import { buildFinancialData, ID, OTHER_ID } from '../helpers/factories.js';
+import { buildFinancialData, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 
 jest.mock('../../../src/repositories/financial-data.repository.js');
 
@@ -24,10 +24,11 @@ describe('financial-data.service', () => {
         12000,
         OTHER_ID,
         'Bridge Renovation',
+        USER_ID,
       );
 
       expect(result).toEqual(record);
-      expect(repo.createFinancialData).toHaveBeenCalledWith(2026, 3, 1500.5, 10000, 12000, OTHER_ID, 'Bridge Renovation');
+      expect(repo.createFinancialData).toHaveBeenCalledWith(2026, 3, 1500.5, 10000, 12000, OTHER_ID, 'Bridge Renovation', USER_ID);
     });
 
     it('passes omitted optional fields through as undefined', async () => {
@@ -35,7 +36,7 @@ describe('financial-data.service', () => {
 
       await financialDataService.createFinancialData(2026, 3);
 
-      expect(repo.createFinancialData).toHaveBeenCalledWith(2026, 3, undefined, undefined, undefined, undefined, undefined);
+      expect(repo.createFinancialData).toHaveBeenCalledWith(2026, 3, undefined, undefined, undefined, undefined, undefined, undefined);
     });
 
     it('accepts zero amounts', async () => {
@@ -43,7 +44,7 @@ describe('financial-data.service', () => {
 
       await financialDataService.createFinancialData(2026, 1, 0, 0, 0, OTHER_ID, 'Bridge Renovation');
 
-      expect(repo.createFinancialData).toHaveBeenCalledWith(2026, 1, 0, 0, 0, OTHER_ID, 'Bridge Renovation');
+      expect(repo.createFinancialData).toHaveBeenCalledWith(2026, 1, 0, 0, 0, OTHER_ID, 'Bridge Renovation', undefined);
     });
 
     it('wraps repository errors', async () => {
@@ -69,10 +70,11 @@ describe('financial-data.service', () => {
         12000,
         OTHER_ID,
         'Bridge Renovation',
+        USER_ID,
       );
 
       expect(result).toEqual(record);
-      expect(repo.updateFinancialData).toHaveBeenCalledWith(ID, 2026, 4, 2000, 10000, 12000, OTHER_ID, 'Bridge Renovation');
+      expect(repo.updateFinancialData).toHaveBeenCalledWith(ID, 2026, 4, 2000, 10000, 12000, OTHER_ID, 'Bridge Renovation', USER_ID);
     });
 
     it('supports a partial update with only the id and one field', async () => {
@@ -85,6 +87,7 @@ describe('financial-data.service', () => {
         undefined,
         undefined,
         99,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -114,8 +117,8 @@ describe('financial-data.service', () => {
       const record = buildFinancialData();
       repo.deleteFinancialData.mockResolvedValue(record);
 
-      await expect(financialDataService.deleteFinancialData(ID)).resolves.toEqual(record);
-      expect(repo.deleteFinancialData).toHaveBeenCalledWith(ID);
+      await expect(financialDataService.deleteFinancialData(ID, USER_ID)).resolves.toEqual(record);
+      expect(repo.deleteFinancialData).toHaveBeenCalledWith(ID, USER_ID);
     });
 
     it('throws a not-found error when the repository returns null', async () => {

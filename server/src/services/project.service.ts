@@ -1,4 +1,5 @@
 import * as projectRepository from '../repositories/project.repository.js';
+import * as auditLogRepository from '../repositories/audit-log.repository.js';
 import { getUncategorisedLabel } from '../categories.js';
 import { ProjectListFilters, ProjectSort } from '../validators/project.validator.js';
 
@@ -35,7 +36,8 @@ export const updateProject = async (
     category_name?: string,
     start_date?: Date,
     end_date?: Date,
-    created_by_id?: string
+    created_by_id?: string,
+    changed_by_id?: string
 ) => {
     try {
         const updatedProject = await projectRepository.updateProject(
@@ -46,7 +48,8 @@ export const updateProject = async (
             category_name,
             start_date,
             end_date,
-            created_by_id
+            created_by_id,
+            changed_by_id
         );
         if (!updatedProject) {
             throw new Error(`Project with id ${id} not found`);
@@ -57,9 +60,9 @@ export const updateProject = async (
     }
 };
 
-export const deleteProject = async (id: string) => {
+export const deleteProject = async (id: string, deleted_by_id?: string) => {
     try {
-        const deletedProject = await projectRepository.deleteProject(id);
+        const deletedProject = await projectRepository.deleteProject(id, deleted_by_id);
         if (!deletedProject) {
             throw new Error(`Project with id ${id} not found`);
         }
@@ -92,16 +95,19 @@ export const getAllProjects = async (offset: number, limit: number, filters: Pro
     }
 };
 
-type ProjectOwner = {
-    id: string;
+type UserName = {
     username: string | null;
     name: string | null;
     email: string;
 };
 
+type ProjectOwner = UserName & { id: string };
+
+const toDisplayName = (user: UserName) => user.username || user.name || user.email;
+
 const toOwnerOption = (owner: ProjectOwner) => ({
     id: owner.id,
-    display_name: owner.username || owner.name || owner.email,
+    display_name: toDisplayName(owner),
 });
 
 export const getProjectOwners = async () => {
@@ -112,6 +118,26 @@ export const getProjectOwners = async () => {
             .sort((a, b) => a.display_name.localeCompare(b.display_name));
     } catch (error) {
         throw new Error(`Failed to fetch project owners: ${error}`);
+    }
+};
+
+type StoredAuditEntry = Awaited<ReturnType<typeof auditLogRepository.getProjectAuditLog>>[number];
+
+const toHistoryEntry = ({ user, ...entry }: StoredAuditEntry) => ({
+    ...entry,
+    user_name: user ? toDisplayName(user) : null,
+});
+
+export const getProjectHistory = async (id: string) => {
+    try {
+        const project = await projectRepository.getProjectById(id);
+        if (!project) {
+            return null;
+        }
+        const entries = await auditLogRepository.getProjectAuditLog(id);
+        return entries.map(toHistoryEntry);
+    } catch (error) {
+        throw new Error(`Failed to fetch project history: ${error}`);
     }
 };
 

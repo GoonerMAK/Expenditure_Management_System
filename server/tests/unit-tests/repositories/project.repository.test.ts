@@ -1,20 +1,31 @@
 import prisma from '../../../src/db.js';
 import * as projectRepository from '../../../src/repositories/project.repository.js';
-import { buildProject, buildUser } from '../helpers/factories.js';
+import * as auditLogRepository from '../../../src/repositories/audit-log.repository.js';
+import { buildProject, buildUser, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 
 jest.mock('../../../src/db.js', () => ({
   __esModule: true,
   default: {
+    $transaction: jest.fn(),
     project: { findMany: jest.fn(), count: jest.fn() },
     financialData: { groupBy: jest.fn() },
     user: { findMany: jest.fn() },
   },
 }));
 
+jest.mock('../../../src/repositories/audit-log.repository.js');
+
 const db = prisma as unknown as {
+  $transaction: jest.Mock;
   project: { findMany: jest.Mock; count: jest.Mock };
   financialData: { groupBy: jest.Mock };
   user: { findMany: jest.Mock };
+};
+
+const audit = jest.mocked(auditLogRepository);
+
+const tx = {
+  project: { create: jest.fn(), update: jest.fn(), delete: jest.fn(), findUnique: jest.fn() },
 };
 
 const FROM = new Date('2026-01-01T00:00:00.000Z');
@@ -36,8 +47,61 @@ const mockSpendData = (ids: string[], totals: ReturnType<typeof spend>[]) => {
 const pageNames = (projects: { project_name: string }[]) => projects.map((project) => project.project_name);
 
 describe('project.repository', () => {
+  beforeEach(() => {
+    db.$transaction.mockImplementation((change) => change(tx));
+  });
+
   afterEach(() => {
     jest.resetAllMocks();
+  });
+
+  describe('createProject', () => {
+    it('creates the project and records who created it in the same transaction', async () => {
+      const project = buildProject();
+      tx.project.create.mockResolvedValue(project);
+
+      await expect(projectRepository.createProject('Bridge Renovation', undefined, OTHER_ID, 'Infrastructure', undefined, undefined, USER_ID))
+        .resolves.toEqual(project);
+
+      expect(db.$transaction).toHaveBeenCalledTimes(1);
+      expect(audit.recordAudit).toHaveBeenCalledWith(tx, 'Project', 'Created', USER_ID, null, project);
+    });
+  });
+
+  describe('updateProject', () => {
+    it('records the project before and after the change with who changed it', async () => {
+      const before = buildProject();
+      const after = buildProject({ project_name: 'Bridge Rebuild' });
+      tx.project.findUnique.mockResolvedValue(before);
+      tx.project.update.mockResolvedValue(after);
+
+      await expect(projectRepository.updateProject(ID, 'Bridge Rebuild', undefined, undefined, undefined, undefined, undefined, undefined, USER_ID))
+        .resolves.toEqual(after);
+
+      expect(tx.project.update).toHaveBeenCalledWith({ where: { id: ID }, data: { project_name: 'Bridge Rebuild' } });
+      expect(audit.recordAudit).toHaveBeenCalledWith(tx, 'Project', 'Updated', USER_ID, before, after);
+    });
+
+    it('records nothing when the update fails', async () => {
+      tx.project.findUnique.mockResolvedValue(null);
+      tx.project.update.mockRejectedValue(new Error('Record to update not found'));
+
+      await expect(projectRepository.updateProject(ID, 'Bridge Rebuild')).rejects.toThrow('Record to update not found');
+
+      expect(audit.recordAudit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteProject', () => {
+    it('records the deleted project with who deleted it', async () => {
+      const project = buildProject();
+      tx.project.delete.mockResolvedValue(project);
+
+      await expect(projectRepository.deleteProject(ID, USER_ID)).resolves.toEqual(project);
+
+      expect(tx.project.delete).toHaveBeenCalledWith({ where: { id: ID } });
+      expect(audit.recordAudit).toHaveBeenCalledWith(tx, 'Project', 'Deleted', USER_ID, project, null);
+    });
   });
 
   describe('buildProjectFilter', () => {

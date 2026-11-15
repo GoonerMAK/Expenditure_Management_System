@@ -1,6 +1,7 @@
 import prisma from '../db.js';
-import { Prisma, Project } from '@prisma/client';
+import { AuditAction, AuditEntity, Prisma, Project } from '@prisma/client';
 import { ProjectListFilters, ProjectSort } from '../validators/project.validator.js';
+import { recordAudit } from './audit-log.repository.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -53,24 +54,28 @@ export const createProject = async (
     end_date?: Date,
     created_by_id?: string
 ) => {
-    return await prisma.project.create({
-        data: {
-            project_name,
-            description,
-            start_date,
-            end_date,
-            category_name,
-            created_by:{
-                connect:{
-                    id:created_by_id
+    return await prisma.$transaction(async (tx) => {
+        const project = await tx.project.create({
+            data: {
+                project_name,
+                description,
+                start_date,
+                end_date,
+                category_name,
+                created_by:{
+                    connect:{
+                        id:created_by_id
+                    }
+                },
+                category: {
+                    connect: {
+                        id: category_id
+                    }
                 }
             },
-            category: {
-                connect: {
-                    id: category_id
-                }
-            }
-        },
+        });
+        await recordAudit(tx, AuditEntity.Project, AuditAction.Created, created_by_id, null, project);
+        return project;
     });
 };
 
@@ -82,7 +87,8 @@ export const updateProject = async (
     category_name?: string,
     start_date?: Date,
     end_date?: Date,
-    created_by_id?: string
+    created_by_id?: string,
+    changed_by_id?: string
 ) => {
     const data: any = {};
     if (project_name !== undefined) data.project_name = project_name;
@@ -93,15 +99,24 @@ export const updateProject = async (
     if (end_date !== undefined) data.end_date = end_date;
     if (created_by_id !== undefined) data.created_by_id = created_by_id;
 
-    return await prisma.project.update({
-        where: { id },
-        data,
+    return await prisma.$transaction(async (tx) => {
+        const before = await tx.project.findUnique({ where: { id } });
+        const project = await tx.project.update({
+            where: { id },
+            data,
+        });
+        await recordAudit(tx, AuditEntity.Project, AuditAction.Updated, changed_by_id, before, project);
+        return project;
     });
 };
 
-export const deleteProject = async (id: string) => {
-    return await prisma.project.delete({
-        where: { id },
+export const deleteProject = async (id: string, deleted_by_id?: string) => {
+    return await prisma.$transaction(async (tx) => {
+        const project = await tx.project.delete({
+            where: { id },
+        });
+        await recordAudit(tx, AuditEntity.Project, AuditAction.Deleted, deleted_by_id, project, null);
+        return project;
     });
 };
 

@@ -1,6 +1,6 @@
 import * as projectController from '../../../src/controllers/project.controller.js';
 import * as projectService from '../../../src/services/project.service.js';
-import { buildProject, ID, OTHER_ID } from '../helpers/factories.js';
+import { buildProject, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 import { expectResponse, mockRequest, mockResponse } from '../helpers/express.js';
 
 jest.mock('../../../src/services/project.service.js');
@@ -61,7 +61,7 @@ describe('project.controller', () => {
       service.updateProject.mockResolvedValue(project);
       const res = mockResponse();
 
-      await projectController.updateProject(mockRequest({ params: { id: ID }, body }), res);
+      await projectController.updateProject(mockRequest({ params: { id: ID }, body, user: { id: USER_ID } }), res);
 
       expect(service.updateProject).toHaveBeenCalledWith(
         ID,
@@ -71,6 +71,8 @@ describe('project.controller', () => {
         'Infrastructure',
         START,
         END,
+        undefined,
+        USER_ID,
       );
       expectResponse(res, 200, project);
     });
@@ -100,9 +102,9 @@ describe('project.controller', () => {
       service.deleteProject.mockResolvedValue(project);
       const res = mockResponse();
 
-      await projectController.deleteProject(mockRequest({ params: { id: ID } }), res);
+      await projectController.deleteProject(mockRequest({ params: { id: ID }, user: { id: USER_ID } }), res);
 
-      expect(service.deleteProject).toHaveBeenCalledWith(ID);
+      expect(service.deleteProject).toHaveBeenCalledWith(ID, USER_ID);
       expectResponse(res, 200, project);
     });
 
@@ -256,6 +258,47 @@ describe('project.controller', () => {
       const res = mockResponse();
 
       await projectController.getBudgetByCategory(mockRequest(), res);
+
+      expectResponse(res, 500, { error: 'boom' });
+    });
+  });
+
+  describe('getProjectHistory', () => {
+    it('responds 200 with the history for the path id', async () => {
+      const history = [{
+        id: OTHER_ID,
+        project_id: ID,
+        entity: 'Project' as const,
+        entity_label: 'Bridge Renovation',
+        action: 'Created' as const,
+        changes: [],
+        user_id: USER_ID,
+        user_name: 'jdoe',
+        created_at: new Date('2026-01-15T10:00:00.000Z'),
+      }];
+      service.getProjectHistory.mockResolvedValue(history);
+      const res = mockResponse();
+
+      await projectController.getProjectHistory(mockRequest({ params: { id: ID } }), res);
+
+      expect(service.getProjectHistory).toHaveBeenCalledWith(ID);
+      expectResponse(res, 200, history);
+    });
+
+    it('responds 404 when the project does not exist', async () => {
+      service.getProjectHistory.mockResolvedValue(null);
+      const res = mockResponse();
+
+      await projectController.getProjectHistory(mockRequest({ params: { id: ID } }), res);
+
+      expectResponse(res, 404, { error: `Project with id ${ID} not found` });
+    });
+
+    it('responds 500 when the service throws', async () => {
+      service.getProjectHistory.mockRejectedValue(new Error('boom'));
+      const res = mockResponse();
+
+      await projectController.getProjectHistory(mockRequest({ params: { id: ID } }), res);
 
       expectResponse(res, 500, { error: 'boom' });
     });

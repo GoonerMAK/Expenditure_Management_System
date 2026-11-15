@@ -1,4 +1,4 @@
-import { ExpenseEntry, ExpenseStatus } from '@prisma/client';
+import { AuditAction, ExpenseEntry, ExpenseStatus } from '@prisma/client';
 import * as expenseEntryRepository from '../repositories/expense-entry.repository.js';
 import * as projectRepository from '../repositories/project.repository.js';
 import * as userRepository from '../repositories/user.repository.js';
@@ -79,7 +79,7 @@ export const createExpenseEntry = async (entry: NewExpenseEntry, user_id: string
         const review = await reviewOnCreate(user_id);
         const stored = receipt ? await storeReceipt(receipt) : undefined;
         savedFile = stored?.receipt_file;
-        const created = await expenseEntryRepository.createExpenseEntry({ ...entry, ...stored, ...review });
+        const created = await expenseEntryRepository.createExpenseEntry({ ...entry, ...stored, ...review }, user_id);
         return toPublicEntry(created);
     } catch (error) {
         await removeReceiptQuietly(savedFile);
@@ -99,7 +99,7 @@ export const updateExpenseEntry = async (id: string, changes: ExpenseEntryUpdate
         savedFile = stored?.receipt_file;
         const receiptFields = stored ?? (remove_receipt ? noReceipt : {});
 
-        const updated = await expenseEntryRepository.updateExpenseEntry(id, { ...fields, ...receiptFields, ...review });
+        const updated = await expenseEntryRepository.updateExpenseEntry(id, { ...fields, ...receiptFields, ...review }, user_id);
         if (!updated) {
             await removeReceiptQuietly(savedFile);
             return null;
@@ -114,7 +114,12 @@ export const updateExpenseEntry = async (id: string, changes: ExpenseEntryUpdate
 
 export const approveExpenseEntry = async (id: string, reviewer_id: string) => {
     try {
-        const updated = await expenseEntryRepository.updateExpenseEntry(id, reviewedAs(ExpenseStatus.Approved, reviewer_id));
+        const updated = await expenseEntryRepository.updateExpenseEntry(
+            id,
+            reviewedAs(ExpenseStatus.Approved, reviewer_id),
+            reviewer_id,
+            AuditAction.Approved
+        );
         if (!updated) return null;
         return toPublicEntry(updated);
     } catch (error) {
@@ -124,7 +129,12 @@ export const approveExpenseEntry = async (id: string, reviewer_id: string) => {
 
 export const rejectExpenseEntry = async (id: string, reviewer_id: string, rejection_reason: string | null = null) => {
     try {
-        const updated = await expenseEntryRepository.updateExpenseEntry(id, reviewedAs(ExpenseStatus.Rejected, reviewer_id, rejection_reason));
+        const updated = await expenseEntryRepository.updateExpenseEntry(
+            id,
+            reviewedAs(ExpenseStatus.Rejected, reviewer_id, rejection_reason),
+            reviewer_id,
+            AuditAction.Rejected
+        );
         if (!updated) return null;
         return toPublicEntry(updated);
     } catch (error) {
@@ -132,9 +142,9 @@ export const rejectExpenseEntry = async (id: string, reviewer_id: string, reject
     }
 };
 
-export const deleteExpenseEntry = async (id: string) => {
+export const deleteExpenseEntry = async (id: string, user_id?: string) => {
     try {
-        const deleted = await expenseEntryRepository.deleteExpenseEntry(id);
+        const deleted = await expenseEntryRepository.deleteExpenseEntry(id, user_id);
         if (!deleted) return null;
         await removeReceiptQuietly(deleted.receipt_file);
         return toPublicEntry(deleted);

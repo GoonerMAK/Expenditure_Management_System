@@ -1,6 +1,6 @@
 import * as financialDataController from '../../../src/controllers/financial-data.controller.js';
 import * as financialDataService from '../../../src/services/financial-data.service.js';
-import { buildFinancialData, ID, OTHER_ID } from '../helpers/factories.js';
+import { buildFinancialData, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 import { expectResponse, mockRequest, mockResponse } from '../helpers/express.js';
 
 jest.mock('../../../src/services/financial-data.service.js');
@@ -23,14 +23,14 @@ describe('financial-data.controller', () => {
   });
 
   describe('createFinancialData', () => {
-    it('responds 201 and forwards the body fields in order', async () => {
+    it('responds 201 and forwards the body fields in order with the signed-in user', async () => {
       const record = buildFinancialData();
       service.createFinancialData.mockResolvedValue(record);
       const res = mockResponse();
 
-      await financialDataController.createFinancialData(mockRequest({ body }), res);
+      await financialDataController.createFinancialData(mockRequest({ body, user: { id: USER_ID } }), res);
 
-      expect(service.createFinancialData).toHaveBeenCalledWith(2026, 3, 1500.5, 10000, 12000, OTHER_ID, 'Bridge Renovation');
+      expect(service.createFinancialData).toHaveBeenCalledWith(2026, 3, 1500.5, 10000, 12000, OTHER_ID, 'Bridge Renovation', USER_ID);
       expectResponse(res, 201, record);
     });
 
@@ -40,7 +40,7 @@ describe('financial-data.controller', () => {
 
       await financialDataController.createFinancialData(mockRequest({ body: { year: 2026, month: 3 } }), res);
 
-      expect(service.createFinancialData).toHaveBeenCalledWith(2026, 3, undefined, undefined, undefined, undefined, undefined);
+      expect(service.createFinancialData).toHaveBeenCalledWith(2026, 3, undefined, undefined, undefined, undefined, undefined, undefined);
     });
 
     it('responds 500 with the service error message', async () => {
@@ -54,12 +54,12 @@ describe('financial-data.controller', () => {
   });
 
   describe('updateFinancialData', () => {
-    it('responds 200 and forwards the path id with the body fields', async () => {
+    it('responds 200 and forwards the path id with the body fields and the signed-in user', async () => {
       const record = buildFinancialData();
       service.updateFinancialData.mockResolvedValue(record);
       const res = mockResponse();
 
-      await financialDataController.updateFinancialData(mockRequest({ params: { id: ID }, body }), res);
+      await financialDataController.updateFinancialData(mockRequest({ params: { id: ID }, body, user: { id: USER_ID } }), res);
 
       expect(service.updateFinancialData).toHaveBeenCalledWith(
         ID,
@@ -70,6 +70,7 @@ describe('financial-data.controller', () => {
         12000,
         OTHER_ID,
         'Bridge Renovation',
+        USER_ID,
       );
       expectResponse(res, 200, record);
     });
@@ -99,9 +100,9 @@ describe('financial-data.controller', () => {
       service.deleteFinancialData.mockResolvedValue(record);
       const res = mockResponse();
 
-      await financialDataController.deleteFinancialData(mockRequest({ params: { id: ID } }), res);
+      await financialDataController.deleteFinancialData(mockRequest({ params: { id: ID }, user: { id: USER_ID } }), res);
 
-      expect(service.deleteFinancialData).toHaveBeenCalledWith(ID);
+      expect(service.deleteFinancialData).toHaveBeenCalledWith(ID, USER_ID);
       expectResponse(res, 200, record);
     });
 

@@ -1,6 +1,7 @@
 import prisma from '../db.js';
-import { FinancialData } from '@prisma/client';
+import { AuditAction, AuditEntity, FinancialData } from '@prisma/client';
 import { syncMonthIfItHasEntries } from './expense-entry.repository.js';
+import { recordAudit } from './audit-log.repository.js';
 
 export const createFinancialData = async (
     year: number,
@@ -10,24 +11,29 @@ export const createFinancialData = async (
     revised_budget?: number,
     project_id?: string,
     project_name?: string,
+    created_by_id?: string,
 ) => {
-    const created = await prisma.financialData.create({
-        data: {
-            year,
-            month,
-            expenditure,
-            initial_budget,
-            revised_budget,
-            project_name,
-            project: {
-                connect:{
-                    id: project_id
+    return await prisma.$transaction(async (tx) => {
+        const created = await tx.financialData.create({
+            data: {
+                year,
+                month,
+                expenditure,
+                initial_budget,
+                revised_budget,
+                project_name,
+                project: {
+                    connect:{
+                        id: project_id
+                    }
                 }
-            }
-        },
+            },
+        });
+        await syncMonthIfItHasEntries(tx, created.project_id, created.year, created.month);
+        const saved = await tx.financialData.findUniqueOrThrow({ where: { id: created.id } });
+        await recordAudit(tx, AuditEntity.Budget, AuditAction.Created, created_by_id, null, saved);
+        return saved;
     });
-    await syncMonthIfItHasEntries(prisma, created.project_id, created.year, created.month);
-    return await prisma.financialData.findUniqueOrThrow({ where: { id: created.id } });
 };
 
 export const updateFinancialData = async (
@@ -39,6 +45,7 @@ export const updateFinancialData = async (
     revised_budget?: number,
     project_id?: string,
     project_name?: string,
+    changed_by_id?: string,
 ) => {
     const data: any = {};
     if (year !== undefined) data.year = year;
@@ -49,23 +56,31 @@ export const updateFinancialData = async (
     if (project_id !== undefined) data.project_id = project_id;
     if (project_name !== undefined) data.project_name = project_name;
 
-    const financialData = await prisma.financialData.findFirst({
-        where: { project_id: id },
-    });
+    return await prisma.$transaction(async (tx) => {
+        const financialData = await tx.financialData.findFirst({
+            where: { project_id: id },
+        });
 
-    const updated = await prisma.financialData.update({
-        where: { id: financialData.id },
-        data,
+        const updated = await tx.financialData.update({
+            where: { id: financialData.id },
+            data,
+        });
+        // A month that has expense entries keeps their total, including the month the row moved away from.
+        await syncMonthIfItHasEntries(tx, updated.project_id, updated.year, updated.month);
+        await syncMonthIfItHasEntries(tx, financialData.project_id, financialData.year, financialData.month);
+        const saved = await tx.financialData.findUniqueOrThrow({ where: { id: updated.id } });
+        await recordAudit(tx, AuditEntity.Budget, AuditAction.Updated, changed_by_id, financialData, saved);
+        return saved;
     });
-    // A month that has expense entries keeps their total, including the month the row moved away from.
-    await syncMonthIfItHasEntries(prisma, updated.project_id, updated.year, updated.month);
-    await syncMonthIfItHasEntries(prisma, financialData.project_id, financialData.year, financialData.month);
-    return await prisma.financialData.findUniqueOrThrow({ where: { id: updated.id } });
 };
 
-export const deleteFinancialData = async (id: string) => {
-    return await prisma.financialData.delete({
-        where: { id },
+export const deleteFinancialData = async (id: string, deleted_by_id?: string) => {
+    return await prisma.$transaction(async (tx) => {
+        const deleted = await tx.financialData.delete({
+            where: { id },
+        });
+        await recordAudit(tx, AuditEntity.Budget, AuditAction.Deleted, deleted_by_id, deleted, null);
+        return deleted;
     });
 };
 
