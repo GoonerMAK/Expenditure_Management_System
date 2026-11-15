@@ -78,7 +78,7 @@ export const rejectExpenseEntry = async (req: Request<ExpenseEntryParams, unknow
 export const deleteExpenseEntry = async (req: Request<ExpenseEntryParams, unknown, unknown, unknown>, res: Response) => {
     const { id } = req.params;
     try {
-        const entry = await expenseEntryService.deleteExpenseEntry(id);
+        const entry = await expenseEntryService.deleteExpenseEntry(id, req.user?.id);
         if (!entry) {
             res.status(404).json({ error: `Expense entry with id ${id} not found` });
         } else {

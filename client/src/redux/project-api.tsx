@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { Project, Pagination, BudgetSummary, CategoryBudget, ProjectTrend, ProjectListArgs, ProjectOwner } from "../components/interfaces";
+import { financialDataApi, historyTag } from "./financial-data-api";
 
 export const toProjectListQuery = ({ offset = 0, limit = 6, ...filters }: ProjectListArgs) => {
   const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
@@ -59,6 +60,11 @@ export const projectApi = createApi({
         body: data,
       }),
       invalidatesTags: (_result, _error, { id }) => [{ type: 'Project', id }],
+      onQueryStarted({ id }, { dispatch, queryFulfilled }) {
+        queryFulfilled
+          .then(() => dispatch(financialDataApi.util.invalidateTags([historyTag(id)])))
+          .catch(() => undefined);
+      },
     }),
 
     getBudgetSummary: builder.query<BudgetSummary, void>({

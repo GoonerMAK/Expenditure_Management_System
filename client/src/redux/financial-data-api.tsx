@@ -1,21 +1,24 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { ExpenseEntry, FinancialData } from "../components/interfaces";
+import { ExpenseEntry, FinancialData, HistoryEntry } from "../components/interfaces";
 
 const BASE_URL = "http://localhost:4000/api/";
 
 export const getReceiptUrl = (id: string) => `${BASE_URL}expenses/${id}/receipt`;
+
+export const historyTag = (projectId: string) => ({ type: 'History' as const, id: projectId });
 
 // Entries change the month's expenditure on the server, so the project's financial data is refetched too.
 const expenseTags = (projectId: string) => [
   { type: 'Expense' as const, id: projectId },
   { type: 'FinancialData' as const, id: projectId },
   { type: 'FinancialData' as const, id: 'LIST' },
+  historyTag(projectId),
 ];
 
 export const financialDataApi = createApi({
   reducerPath: "financialDataApi",
   baseQuery: fetchBaseQuery({ baseUrl: BASE_URL, credentials: 'include', }),
-  tagTypes: ["FinancialData", "Expense"],
+  tagTypes: ["FinancialData", "Expense", "History"],
   endpoints: (builder) => ({
 
     getFinancialData: builder.query<FinancialData[], void>({
@@ -43,7 +46,10 @@ export const financialDataApi = createApi({
         method: 'post',
         body: data,
       }),
-      invalidatesTags: [{ type: 'FinancialData', id: 'LIST' }],
+      invalidatesTags: (_result, _error, data) =>
+        data.project_id
+          ? [{ type: 'FinancialData', id: 'LIST' }, historyTag(data.project_id)]
+          : [{ type: 'FinancialData', id: 'LIST' }],
     }),
 
     updateFinancialData: builder.mutation<FinancialData, { id: string; data: Partial<FinancialData> }>({
@@ -52,7 +58,15 @@ export const financialDataApi = createApi({
         method: 'put',
         body: data,
       }),
-      invalidatesTags: (_result, _error, { id }) => [{ type: 'FinancialData', id }],
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'FinancialData', id }, historyTag(id)],
+    }),
+
+    getProjectHistory: builder.query<HistoryEntry[], string>({
+      query: (projectId) => ({
+        url: `projects/${projectId}/history`,
+        method: 'get',
+      }),
+      providesTags: (_result, _error, projectId) => [historyTag(projectId)],
     }),
 
     getProjectExpenses: builder.query<ExpenseEntry[], string>({
@@ -112,5 +126,5 @@ export const financialDataApi = createApi({
 export const {
   useGetFinancialDataQuery, useGetFinancialDataByIdQuery, useAddFinancialDataMutation, useUpdateFinancialDataMutation,
   useGetProjectExpensesQuery, useAddExpenseMutation, useUpdateExpenseMutation, useDeleteExpenseMutation,
-  useApproveExpenseMutation, useRejectExpenseMutation,
+  useApproveExpenseMutation, useRejectExpenseMutation, useGetProjectHistoryQuery,
 } = financialDataApi;

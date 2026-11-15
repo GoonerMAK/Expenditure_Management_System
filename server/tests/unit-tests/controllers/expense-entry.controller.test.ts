@@ -238,9 +238,9 @@ describe('expense-entry.controller', () => {
       service.deleteExpenseEntry.mockResolvedValue(entry);
       const res = mockResponse();
 
-      await expenseEntryController.deleteExpenseEntry(mockRequest({ params: { id: ID } }), res);
+      await expenseEntryController.deleteExpenseEntry(mockRequest({ params: { id: ID }, user: { id: USER_ID } }), res);
 
-      expect(service.deleteExpenseEntry).toHaveBeenCalledWith(ID);
+      expect(service.deleteExpenseEntry).toHaveBeenCalledWith(ID, USER_ID);
       expectResponse(res, 200, entry);
     });
 

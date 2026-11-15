@@ -44,6 +44,30 @@ export interface ExpenseEntry {
     updated_at: string;
 }
 
+export type HistoryAction = 'Created' | 'Updated' | 'Deleted' | 'Approved' | 'Rejected';
+
+export type HistoryEntity = 'Project' | 'Budget' | 'Expense';
+
+export type HistoryValue = string | number | null;
+
+export interface HistoryChange {
+    field: string;
+    from: HistoryValue;
+    to: HistoryValue;
+}
+
+export interface HistoryEntry {
+    id: string;
+    project_id: string;
+    entity: HistoryEntity;
+    entity_label: string;
+    action: HistoryAction;
+    changes: HistoryChange[];
+    user_id: string | null;
+    user_name: string | null;
+    created_at: string;
+}
+
 export interface Project {
     id: string;
     project_name: string;

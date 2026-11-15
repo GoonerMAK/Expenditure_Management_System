@@ -2,6 +2,7 @@ import type { Category, ExpenseEntry, FinancialData, Permission, Project, Role, 
 
 export const ID = '3f1c2a4e-8b7d-4c6a-9e2f-1a2b3c4d5e6f';
 export const OTHER_ID = '7a9b8c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
+export const USER_ID = 'c4e2b1a0-9d8f-4e7c-b6a5-0f1e2d3c4b5a';
 export const NOW = new Date('2026-01-15T10:00:00.000Z');
 
 export const buildCategory = (overrides: Partial<Category> = {}): Category => ({

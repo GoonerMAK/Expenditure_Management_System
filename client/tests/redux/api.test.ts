@@ -393,6 +393,77 @@ describe('RTK Query APIs', () => {
     });
   });
 
+  describe('financialDataApi project history', () => {
+    const watchHistory = async () => {
+      const server = mockServer(({ method }) => ({ body: method === 'GET' ? [] : { id: 'p1' } }));
+      const store = makeStore();
+      store.dispatch(financialDataApi.endpoints.getProjectHistory.initiate('p1'));
+      await flush();
+      return { ...server, store };
+    };
+
+    const historyRequests = (requests: { url: string }[]) => urlsFor(requests, 'projects/p1/history');
+
+    it('fetches the history of a project', async () => {
+      const { requests } = mockServer(() => ({ body: [] }));
+      const store = makeStore();
+
+      await store.dispatch(financialDataApi.endpoints.getProjectHistory.initiate('p1'));
+
+      expect(requests).toEqual([expect.objectContaining({ url: `${BASE}projects/p1/history`, method: 'GET' })]);
+    });
+
+    it('refetches the history after an expense entry changes', async () => {
+      const { requests, store } = await watchHistory();
+
+      await store.dispatch(financialDataApi.endpoints.approveExpense.initiate({ id: 'e1', projectId: 'p1' }));
+      await flush();
+
+      expect(historyRequests(requests)).toHaveLength(2);
+    });
+
+    it('refetches the history after the project budget is updated', async () => {
+      const { requests, store } = await watchHistory();
+
+      await store.dispatch(financialDataApi.endpoints.updateFinancialData.initiate({ id: 'p1', data: { initial_budget: 10 } }));
+      await flush();
+
+      expect(historyRequests(requests)).toHaveLength(2);
+    });
+
+    it('refetches the history after a budget month is added to the project', async () => {
+      const { requests, store } = await watchHistory();
+
+      await store.dispatch(financialDataApi.endpoints.addFinancialData.initiate({ project_id: 'p1', year: 2026, month: 3 }));
+      await flush();
+
+      expect(historyRequests(requests)).toHaveLength(2);
+    });
+
+    it('refetches the history after the project itself is updated', async () => {
+      const { requests, store } = await watchHistory();
+
+      await store.dispatch(projectApi.endpoints.updateProject.initiate({ id: 'p1', data: { project_name: 'Bridge 2' } }));
+      await flush();
+      await flush();
+
+      expect(historyRequests(requests)).toHaveLength(2);
+    });
+
+    it('keeps the history when a project update fails', async () => {
+      const { requests } = mockServer(({ method }) => (method === 'PUT' ? { status: 500, body: {} } : { body: [] }));
+      const store = makeStore();
+      store.dispatch(financialDataApi.endpoints.getProjectHistory.initiate('p1'));
+      await flush();
+
+      await store.dispatch(projectApi.endpoints.updateProject.initiate({ id: 'p1', data: { project_name: 'Bridge 2' } }));
+      await flush();
+      await flush();
+
+      expect(historyRequests(requests)).toHaveLength(1);
+    });
+  });
+
   describe('financialDataApi', () => {
     it('lists financial data', async () => {
       const { requests } = mockServer(() => ({ body: [] }));

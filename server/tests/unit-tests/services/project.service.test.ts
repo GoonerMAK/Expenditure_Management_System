@@ -1,10 +1,13 @@
 import * as projectService from '../../../src/services/project.service.js';
 import * as projectRepository from '../../../src/repositories/project.repository.js';
-import { buildProject, ID, OTHER_ID } from '../helpers/factories.js';
+import * as auditLogRepository from '../../../src/repositories/audit-log.repository.js';
+import { buildProject, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 
 jest.mock('../../../src/repositories/project.repository.js');
+jest.mock('../../../src/repositories/audit-log.repository.js');
 
 const repo = jest.mocked(projectRepository);
+const auditLog = jest.mocked(auditLogRepository);
 
 const START = new Date('2026-02-01T00:00:00.000Z');
 const END = new Date('2026-12-31T00:00:00.000Z');
@@ -80,6 +83,7 @@ describe('project.service', () => {
         START,
         END,
         OTHER_ID,
+        USER_ID,
       );
 
       expect(result).toEqual(project);
@@ -92,6 +96,7 @@ describe('project.service', () => {
         START,
         END,
         OTHER_ID,
+        USER_ID,
       );
     });
 
@@ -102,6 +107,7 @@ describe('project.service', () => {
 
       expect(repo.updateProject).toHaveBeenCalledWith(
         ID,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -134,8 +140,8 @@ describe('project.service', () => {
       const project = buildProject();
       repo.deleteProject.mockResolvedValue(project);
 
-      await expect(projectService.deleteProject(ID)).resolves.toEqual(project);
-      expect(repo.deleteProject).toHaveBeenCalledWith(ID);
+      await expect(projectService.deleteProject(ID, USER_ID)).resolves.toEqual(project);
+      expect(repo.deleteProject).toHaveBeenCalledWith(ID, USER_ID);
     });
 
     it('throws a not-found error when the repository returns null', async () => {
@@ -273,6 +279,69 @@ describe('project.service', () => {
       repo.getProjectOwners.mockRejectedValue(new Error('timeout'));
 
       await expect(projectService.getProjectOwners()).rejects.toThrow('Failed to fetch project owners: Error: timeout');
+    });
+  });
+
+  describe('getProjectHistory', () => {
+    const CREATED_AT = new Date('2026-01-15T10:00:00.000Z');
+
+    const stored = (user: { username: string | null; name: string | null; email: string } | null) => ({
+      id: OTHER_ID,
+      project_id: ID,
+      entity: 'Project' as const,
+      entity_label: 'Bridge Renovation',
+      action: 'Created' as const,
+      changes: [],
+      user_id: user ? USER_ID : null,
+      user,
+      created_at: CREATED_AT,
+    });
+
+    const { user: _user, ...withoutUser } = stored(null);
+
+    it('returns the entries with the name of who made each change', async () => {
+      repo.getProjectById.mockResolvedValue(buildProject());
+      auditLog.getProjectAuditLog.mockResolvedValue([stored({ username: 'jdoe', name: 'John Doe', email: 'jdoe@example.com' })]);
+
+      await expect(projectService.getProjectHistory(ID)).resolves.toEqual([
+        { ...withoutUser, user_id: USER_ID, user_name: 'jdoe' },
+      ]);
+      expect(auditLog.getProjectAuditLog).toHaveBeenCalledWith(ID);
+    });
+
+    it('falls back to the name, then the email, when there is no username', async () => {
+      repo.getProjectById.mockResolvedValue(buildProject());
+      auditLog.getProjectAuditLog.mockResolvedValue([
+        stored({ username: null, name: 'John Doe', email: 'jdoe@example.com' }),
+        stored({ username: null, name: null, email: 'jdoe@example.com' }),
+      ]);
+
+      const history = await projectService.getProjectHistory(ID);
+
+      expect(history?.map((entry) => entry.user_name)).toEqual(['John Doe', 'jdoe@example.com']);
+    });
+
+    it('shows no name when the user has been deleted', async () => {
+      repo.getProjectById.mockResolvedValue(buildProject());
+      auditLog.getProjectAuditLog.mockResolvedValue([stored(null)]);
+
+      const history = await projectService.getProjectHistory(ID);
+
+      expect(history?.[0].user_name).toBeNull();
+    });
+
+    it('returns null when the project does not exist', async () => {
+      repo.getProjectById.mockResolvedValue(null);
+
+      await expect(projectService.getProjectHistory(ID)).resolves.toBeNull();
+      expect(auditLog.getProjectAuditLog).not.toHaveBeenCalled();
+    });
+
+    it('wraps repository errors', async () => {
+      repo.getProjectById.mockResolvedValue(buildProject());
+      auditLog.getProjectAuditLog.mockRejectedValue(new Error('db down'));
+
+      await expect(projectService.getProjectHistory(ID)).rejects.toThrow('Failed to fetch project history: Error: db down');
     });
   });
 

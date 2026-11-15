@@ -1,6 +1,6 @@
 import prisma from '../../../src/db.js';
 import * as expenseEntryRepository from '../../../src/repositories/expense-entry.repository.js';
-import { buildExpenseEntry, buildProject, ID, OTHER_ID } from '../helpers/factories.js';
+import { buildExpenseEntry, buildProject, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 
 jest.mock('../../../src/db.js', () => ({
   __esModule: true,
@@ -23,7 +23,19 @@ const tx = {
   },
   financialData: { updateMany: jest.fn(), create: jest.fn() },
   project: { findUniqueOrThrow: jest.fn() },
+  auditLog: { create: jest.fn() },
 };
+
+const auditRow = (action: string, changes: unknown[], entity_label = 'Steel Supplies Ltd') => ({
+  data: {
+    action,
+    entity: 'Expense',
+    entity_label,
+    project_id: OTHER_ID,
+    user_id: USER_ID,
+    changes,
+  },
+});
 
 const march = { gte: new Date('2026-03-01T00:00:00.000Z'), lt: new Date('2026-04-01T00:00:00.000Z') };
 const april = { gte: new Date('2026-04-01T00:00:00.000Z'), lt: new Date('2026-05-01T00:00:00.000Z') };
@@ -112,12 +124,29 @@ describe('expense-entry.repository', () => {
       tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(null));
       const data = { project_id: OTHER_ID, date: entry.date, vendor: 'Acme', amount: 10, status: 'Pending' as const };
 
-      await expect(expenseEntryRepository.createExpenseEntry(data)).resolves.toEqual(entry);
+      await expect(expenseEntryRepository.createExpenseEntry(data, USER_ID)).resolves.toEqual(entry);
 
       expect(db.$transaction).toHaveBeenCalledTimes(1);
       expect(tx.expenseEntry.create).toHaveBeenCalledWith({ data, include: reviewer });
       expect(tx.expenseEntry.aggregate).toHaveBeenCalledWith(sumQuery(march));
       expect(tx.financialData.updateMany).toHaveBeenCalledWith(monthUpdate(3, 0));
+    });
+
+    it('records who created the entry in the same transaction', async () => {
+      const entry = { ...buildExpenseEntry({ status: 'Pending' }), reviewed_by: null };
+      tx.expenseEntry.create.mockResolvedValue(entry);
+      tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(null));
+
+      await expenseEntryRepository.createExpenseEntry({ project_id: OTHER_ID, date: entry.date, vendor: 'Steel Supplies Ltd', amount: 250.75 }, USER_ID);
+
+      expect(tx.auditLog.create).toHaveBeenCalledWith(auditRow('Created', [
+        { field: 'date', from: null, to: '2026-03-12T00:00:00.000Z' },
+        { field: 'vendor', from: null, to: 'Steel Supplies Ltd' },
+        { field: 'amount', from: null, to: 250.75 },
+        { field: 'notes', from: null, to: 'Rebar for the north pier' },
+        { field: 'receipt_name', from: null, to: 'invoice-1042.pdf' },
+        { field: 'status', from: null, to: 'Pending' },
+      ]));
     });
   });
 
@@ -128,12 +157,60 @@ describe('expense-entry.repository', () => {
       tx.expenseEntry.update.mockResolvedValue({ ...buildExpenseEntry(), reviewed_by: { username: 'admin' } });
       tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(250.75));
 
-      await expenseEntryRepository.updateExpenseEntry(ID, review);
+      await expenseEntryRepository.updateExpenseEntry(ID, review, USER_ID, 'Approved');
 
       expect(db.$transaction).toHaveBeenCalledTimes(1);
       expect(tx.expenseEntry.update).toHaveBeenCalledWith({ where: { id: ID }, data: review, include: reviewer });
       expect(tx.expenseEntry.aggregate).toHaveBeenCalledTimes(1);
       expect(tx.financialData.updateMany).toHaveBeenCalledWith(monthUpdate(3, 250.75));
+    });
+
+    it('records an approval as its own action with the status change', async () => {
+      tx.expenseEntry.findUnique.mockResolvedValue(buildExpenseEntry({ status: 'Pending' }));
+      tx.expenseEntry.update.mockResolvedValue({ ...buildExpenseEntry(), reviewed_by: { username: 'admin' } });
+      tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(250.75));
+
+      await expenseEntryRepository.updateExpenseEntry(ID, { status: 'Approved' }, USER_ID, 'Approved');
+
+      expect(tx.auditLog.create).toHaveBeenCalledWith(auditRow('Approved', [
+        { field: 'status', from: 'Pending', to: 'Approved' },
+      ]));
+    });
+
+    it('records a rejection with its reason', async () => {
+      tx.expenseEntry.findUnique.mockResolvedValue(buildExpenseEntry({ status: 'Pending' }));
+      tx.expenseEntry.update.mockResolvedValue({ ...buildExpenseEntry({ status: 'Rejected', rejection_reason: 'No receipt' }), reviewed_by: null });
+      tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(0));
+
+      await expenseEntryRepository.updateExpenseEntry(ID, { status: 'Rejected', rejection_reason: 'No receipt' }, USER_ID, 'Rejected');
+
+      expect(tx.auditLog.create).toHaveBeenCalledWith(auditRow('Rejected', [
+        { field: 'status', from: 'Pending', to: 'Rejected' },
+        { field: 'rejection_reason', from: null, to: 'No receipt' },
+      ]));
+    });
+
+    it('records an edit as an update with only the fields that changed', async () => {
+      tx.expenseEntry.findUnique.mockResolvedValue(buildExpenseEntry());
+      tx.expenseEntry.update.mockResolvedValue({ ...buildExpenseEntry({ amount: 300, vendor: 'Acme' }), reviewed_by: null });
+      tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(300));
+
+      await expenseEntryRepository.updateExpenseEntry(ID, { amount: 300, vendor: 'Acme' }, USER_ID);
+
+      expect(tx.auditLog.create).toHaveBeenCalledWith(auditRow('Updated', [
+        { field: 'vendor', from: 'Steel Supplies Ltd', to: 'Acme' },
+        { field: 'amount', from: 250.75, to: 300 },
+      ], 'Acme'));
+    });
+
+    it('skips the history when an edit changes nothing it tracks', async () => {
+      tx.expenseEntry.findUnique.mockResolvedValue(buildExpenseEntry());
+      tx.expenseEntry.update.mockResolvedValue({ ...buildExpenseEntry({ receipt_file: 'replaced.pdf' }), reviewed_by: null });
+      tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(250.75));
+
+      await expenseEntryRepository.updateExpenseEntry(ID, { receipt_file: 'replaced.pdf' }, USER_ID);
+
+      expect(tx.auditLog.create).not.toHaveBeenCalled();
     });
 
     it('recalculates both months when the entry moves to another month', async () => {
@@ -154,6 +231,7 @@ describe('expense-entry.repository', () => {
 
       expect(tx.expenseEntry.update).not.toHaveBeenCalled();
       expect(tx.financialData.updateMany).not.toHaveBeenCalled();
+      expect(tx.auditLog.create).not.toHaveBeenCalled();
     });
   });
 
@@ -163,10 +241,26 @@ describe('expense-entry.repository', () => {
       tx.expenseEntry.findUnique.mockResolvedValue(entry);
       tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(null));
 
-      await expect(expenseEntryRepository.deleteExpenseEntry(ID)).resolves.toEqual(entry);
+      await expect(expenseEntryRepository.deleteExpenseEntry(ID, USER_ID)).resolves.toEqual(entry);
 
       expect(tx.expenseEntry.delete).toHaveBeenCalledWith({ where: { id: ID } });
       expect(tx.financialData.updateMany).toHaveBeenCalledWith(monthUpdate(3, 0));
+    });
+
+    it('records who deleted the entry and what it held', async () => {
+      tx.expenseEntry.findUnique.mockResolvedValue(buildExpenseEntry());
+      tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(null));
+
+      await expenseEntryRepository.deleteExpenseEntry(ID, USER_ID);
+
+      expect(tx.auditLog.create).toHaveBeenCalledWith(auditRow('Deleted', [
+        { field: 'date', from: '2026-03-12T00:00:00.000Z', to: null },
+        { field: 'vendor', from: 'Steel Supplies Ltd', to: null },
+        { field: 'amount', from: 250.75, to: null },
+        { field: 'notes', from: 'Rebar for the north pier', to: null },
+        { field: 'receipt_name', from: 'invoice-1042.pdf', to: null },
+        { field: 'status', from: 'Approved', to: null },
+      ]));
     });
 
     it('returns null when the entry does not exist', async () => {

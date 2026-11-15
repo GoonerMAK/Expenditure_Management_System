@@ -43,6 +43,7 @@ model User {
 
   projects    Project[]
   reviewed_expenses ExpenseEntry[]
+  audit_logs        AuditLog[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -117,4 +118,33 @@ model ExpenseEntry {
   updated_at DateTime @updatedAt
 
   @@index([project_id, date])
+}
+
+enum AuditAction {
+  Created
+  Updated
+  Deleted
+  Approved
+  Rejected
+}
+
+enum AuditEntity {
+  Project
+  Budget
+  Expense
+}
+
+model AuditLog {
+  id           String      @id @default(uuid())
+  project_id   String
+  entity       AuditEntity
+  entity_label String
+  action       AuditAction
+  changes      Json
+  user         User?       @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  user_id      String?
+
+  created_at DateTime @default(now())
+
+  @@index([project_id, created_at])
 }
