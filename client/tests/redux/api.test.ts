@@ -3,7 +3,7 @@
  */
 import { categoryApi } from '../../src/redux/category-api';
 import { financialDataApi, getReceiptUrl } from '../../src/redux/financial-data-api';
-import { projectApi } from '../../src/redux/project-api';
+import { projectApi, toProjectListQuery } from '../../src/redux/project-api';
 import { roleApi } from '../../src/redux/role-api';
 import { userApi } from '../../src/redux/user-api';
 import { BASE, flush, makeStore, mockServer } from '../support/api';
@@ -48,6 +48,39 @@ describe('RTK Query APIs', () => {
       await store.dispatch(projectApi.endpoints.getProjects.initiate({ offset: 12, limit: 3 }));
 
       expect(requests[0].url).toBe(`${BASE}projects?offset=12&limit=3`);
+    });
+
+    it('passes the filters and the sort in the query string', async () => {
+      const { requests } = mockServer(() => ({ body: { data: [], pagination: {} } }));
+      const store = makeStore();
+
+      await store.dispatch(
+        projectApi.endpoints.getProjects.initiate({ offset: 6, limit: 6, search: 'bridge road', owner: 'u1', sort: 'spend_desc' }),
+      );
+
+      expect(requests[0].url).toBe(`${BASE}projects?offset=6&limit=6&search=bridge+road&owner=u1&sort=spend_desc`);
+    });
+
+    it('requests the project owners', async () => {
+      const { requests } = mockServer(() => ({ body: [{ id: 'u1', display_name: 'jdoe' }] }));
+      const store = makeStore();
+
+      const result = await store.dispatch(projectApi.endpoints.getProjectOwners.initiate());
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}projects/owners`, method: 'GET' }));
+      expect(result.data).toEqual([{ id: 'u1', display_name: 'jdoe' }]);
+    });
+
+    it('refetches the owners after a project is added', async () => {
+      const { requests } = mockServer(({ method }) => (method === 'GET' ? { body: [] } : { body: { id: 'p2' } }));
+      const store = makeStore();
+      store.dispatch(projectApi.endpoints.getProjectOwners.initiate());
+      await flush();
+
+      await store.dispatch(projectApi.endpoints.addProject.initiate({ project_name: 'New' }));
+      await flush();
+
+      expect(urlsFor(requests, 'projects/owners')).toHaveLength(2);
     });
 
     it('fails without a network call when called with no argument', async () => {
@@ -149,6 +182,22 @@ describe('RTK Query APIs', () => {
       await flush();
 
       expect(urlsFor(requests, 'projects?offset=0&limit=6')).toHaveLength(2);
+    });
+  });
+
+  describe('toProjectListQuery', () => {
+    it('defaults to the first page of six', () => {
+      expect(toProjectListQuery({})).toBe('offset=0&limit=6');
+    });
+
+    it('adds every filter that has a value', () => {
+      expect(
+        toProjectListQuery({ offset: 0, limit: 6, search: 'a&b', category: 'c1', owner: 'u1', from: '2026-01-01', to: '2026-02-01', sort: 'name_asc' }),
+      ).toBe('offset=0&limit=6&search=a%26b&category=c1&owner=u1&from=2026-01-01&to=2026-02-01&sort=name_asc');
+    });
+
+    it('leaves out empty filters', () => {
+      expect(toProjectListQuery({ search: '', category: '', sort: '' })).toBe('offset=0&limit=6');
     });
   });
 
