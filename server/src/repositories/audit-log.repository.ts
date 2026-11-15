@@ -20,6 +20,7 @@ const TRACKED_FIELDS: Record<AuditEntity, string[]> = {
 };
 
 const toAuditValue = (value: unknown): AuditValue => {
+    if (value === '') return null;
     if (value instanceof Date) return value.toISOString();
     if (typeof value === 'string' || typeof value === 'number') return value;
     return null;

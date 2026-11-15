@@ -44,6 +44,13 @@ describe('audit-log.repository', () => {
       ]);
     });
 
+    it('treats an empty text the same as no value', () => {
+      const before = buildProject({ description: null });
+      const after = buildProject({ description: '' });
+
+      expect(auditLogRepository.listChanges('Project', before, after)).toEqual([]);
+    });
+
     it('lists every filled field of a new record', () => {
       const after = buildFinancialData({ revised_budget: null });
 
