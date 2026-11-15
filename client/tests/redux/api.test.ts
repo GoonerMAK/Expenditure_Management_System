@@ -299,6 +299,25 @@ describe('RTK Query APIs', () => {
       expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}expenses/e1`, method: 'DELETE' }));
     });
 
+    it('approves an entry with a POST to its approve route', async () => {
+      const { requests } = mockServer(() => ({ body: {} }));
+      const store = makeStore();
+
+      await store.dispatch(financialDataApi.endpoints.approveExpense.initiate({ id: 'e1', projectId: 'p1' }));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}expenses/e1/approve`, method: 'POST' }));
+    });
+
+    it('rejects an entry with the reason in the body', async () => {
+      const { requests } = mockServer(() => ({ body: {} }));
+      const store = makeStore();
+
+      await store.dispatch(financialDataApi.endpoints.rejectExpense.initiate({ id: 'e1', projectId: 'p1', rejection_reason: 'No receipt' }));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}expenses/e1/reject`, method: 'POST' }));
+      expect(requests[0].body).toEqual({ rejection_reason: 'No receipt' });
+    });
+
     it('builds the receipt link for an entry', () => {
       expect(getReceiptUrl('e1')).toBe(`${BASE}expenses/e1/receipt`);
     });
@@ -307,6 +326,8 @@ describe('RTK Query APIs', () => {
       ['addExpense', () => financialDataApi.endpoints.addExpense.initiate({ projectId: 'p1', data: formData() })],
       ['updateExpense', () => financialDataApi.endpoints.updateExpense.initiate({ id: 'e1', projectId: 'p1', data: formData() })],
       ['deleteExpense', () => financialDataApi.endpoints.deleteExpense.initiate({ id: 'e1', projectId: 'p1' })],
+      ['approveExpense', () => financialDataApi.endpoints.approveExpense.initiate({ id: 'e1', projectId: 'p1' })],
+      ['rejectExpense', () => financialDataApi.endpoints.rejectExpense.initiate({ id: 'e1', projectId: 'p1', rejection_reason: '' })],
     ])('refetches the entries and the monthly totals after %s', async (_name, mutation) => {
       const { requests } = mockServer(() => ({ body: [] }));
       const store = makeStore();

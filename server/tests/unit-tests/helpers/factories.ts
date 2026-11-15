@@ -86,7 +86,16 @@ export const buildExpenseEntry = (overrides: Partial<ExpenseEntry> = {}): Expens
   receipt_file: 'b6d1c1e2-0f4a-4e7b-9a55-3c2d1e0f9a8b.pdf',
   receipt_name: 'invoice-1042.pdf',
   receipt_type: 'application/pdf',
+  status: 'Approved',
+  rejection_reason: null,
+  reviewed_by_id: null,
+  reviewed_at: null,
   created_at: NOW,
   updated_at: NOW,
   ...overrides,
+});
+
+export const withReviewer = (entry: ExpenseEntry, username: string | null = null) => ({
+  ...entry,
+  reviewed_by: username === null ? null : { username },
 });

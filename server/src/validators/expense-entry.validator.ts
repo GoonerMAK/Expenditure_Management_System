@@ -46,6 +46,14 @@ export const updateExpenseEntrySchema = z.object({
         .transform((value) => value === 'true'),
 });
 
+export const rejectExpenseEntrySchema = z.object({
+    rejection_reason: z.string().trim()
+        .max(1000, { message: "Rejection reason must be 1000 characters or fewer" })
+        .transform((value) => value || null)
+        .optional(),
+});
+
 export type ExpenseEntryParams = z.infer<typeof expenseEntryParamsSchema>
 export type NewExpenseEntry = z.infer<typeof createExpenseEntrySchema>
 export type ExpenseEntryUpdate = z.infer<typeof updateExpenseEntrySchema>
+export type ExpenseEntryRejection = z.infer<typeof rejectExpenseEntrySchema>

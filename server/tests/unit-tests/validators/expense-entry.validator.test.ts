@@ -1,6 +1,7 @@
 import {
   createExpenseEntrySchema,
   expenseEntryParamsSchema,
+  rejectExpenseEntrySchema,
   updateExpenseEntrySchema,
 } from '../../../src/validators/expense-entry.validator.js';
 import { ID, OTHER_ID } from '../helpers/factories.js';
@@ -36,6 +37,13 @@ describe('expense-entry.validator', () => {
         amount: 250.75,
         notes: 'Rebar for the north pier',
       });
+    });
+
+    it('drops the review fields so a new entry cannot approve itself', () => {
+      const parsed = createExpenseEntrySchema.parse({ ...valid, status: 'Approved', reviewed_by_id: ID });
+
+      expect(parsed).not.toHaveProperty('status');
+      expect(parsed).not.toHaveProperty('reviewed_by_id');
     });
 
     it('accepts a JSON number amount', () => {
@@ -132,6 +140,10 @@ describe('expense-entry.validator', () => {
       expect(updateExpenseEntrySchema.parse({ project_id: OTHER_ID })).toEqual({ remove_receipt: false });
     });
 
+    it('drops the review fields so an edit cannot approve the entry', () => {
+      expect(updateExpenseEntrySchema.parse({ status: 'Approved', reviewed_by_id: ID })).toEqual({ remove_receipt: false });
+    });
+
     it('turns blank notes into null to clear them', () => {
       expect(updateExpenseEntrySchema.parse({ notes: '' }).notes).toBeNull();
     });
@@ -143,6 +155,34 @@ describe('expense-entry.validator', () => {
     it('applies the same field rules as create', () => {
       expect(updateIssue({ date: '2026-3-1' })?.message).toBe('Date must be in YYYY-MM-DD format');
       expect(updateIssue({ amount: 0 })?.message).toBe('Amount must be greater than 0');
+    });
+  });
+
+  describe('rejectExpenseEntrySchema', () => {
+    const rejectIssue = (input: unknown) => rejectExpenseEntrySchema.safeParse(input).error?.issues[0];
+
+    it('accepts an empty body', () => {
+      expect(rejectExpenseEntrySchema.parse({})).toEqual({});
+    });
+
+    it('trims the reason', () => {
+      expect(rejectExpenseEntrySchema.parse({ rejection_reason: '  No receipt  ' })).toEqual({ rejection_reason: 'No receipt' });
+    });
+
+    it('turns a blank reason into null', () => {
+      expect(rejectExpenseEntrySchema.parse({ rejection_reason: '   ' })).toEqual({ rejection_reason: null });
+    });
+
+    it('rejects a reason over 1000 characters', () => {
+      expect(rejectIssue({ rejection_reason: 'a'.repeat(1001) })?.message).toBe('Rejection reason must be 1000 characters or fewer');
+    });
+
+    it('rejects a reason that is not a string', () => {
+      expect(rejectIssue({ rejection_reason: 42 })?.message).toBe('Expected string, received number');
+    });
+
+    it('drops other fields such as status', () => {
+      expect(rejectExpenseEntrySchema.parse({ status: 'Approved' })).toEqual({});
     });
   });
 });

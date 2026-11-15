@@ -1,14 +1,51 @@
-import { ExpenseEntry } from '@prisma/client';
+import { ExpenseEntry, ExpenseStatus } from '@prisma/client';
 import * as expenseEntryRepository from '../repositories/expense-entry.repository.js';
 import * as projectRepository from '../repositories/project.repository.js';
+import * as userRepository from '../repositories/user.repository.js';
 import * as receiptStorage from '../storage/receipt.storage.js';
+import { getAdminRole } from '../roles.js';
 import { ExpenseEntryUpdate } from '../validators/expense-entry.validator.js';
 
 type NewExpenseEntry = Pick<expenseEntryRepository.ExpenseEntryData, 'project_id' | 'date' | 'vendor' | 'amount' | 'notes'>;
 
 const noReceipt = { receipt_file: null, receipt_name: null, receipt_type: null };
 
-const toPublicEntry = ({ receipt_file, ...entry }: ExpenseEntry) => ({ ...entry, has_receipt: receipt_file !== null });
+type StoredEntry = ExpenseEntry & { reviewed_by?: { username: string | null } | null };
+
+const toPublicEntry = ({ receipt_file, reviewed_by, ...entry }: StoredEntry) => ({
+    ...entry,
+    has_receipt: receipt_file !== null,
+    reviewed_by_name: reviewed_by?.username ?? null,
+});
+
+const isAdministrator = async (user_id: string) => {
+    const user = await userRepository.getUserWithRole(user_id);
+    return user?.role?.role_name === getAdminRole();
+};
+
+const reviewedAs = (status: ExpenseStatus, reviewer_id: string, rejection_reason: string | null = null) => ({
+    status,
+    rejection_reason,
+    reviewed_by_id: reviewer_id,
+    reviewed_at: new Date(),
+});
+
+const pendingReview = () => ({
+    status: ExpenseStatus.Pending,
+    rejection_reason: null,
+    reviewed_by_id: null,
+    reviewed_at: null,
+});
+
+const reviewOnCreate = async (user_id: string) => {
+    if (await isAdministrator(user_id)) return reviewedAs(ExpenseStatus.Approved, user_id);
+    return pendingReview();
+};
+
+const reviewOnEdit = async (user_id: string) => {
+    if (await isAdministrator(user_id)) return {};
+    return pendingReview();
+};
 
 const storeReceipt = async (receipt: Express.Multer.File) => ({
     receipt_file: await receiptStorage.saveReceipt(receipt.buffer, receipt.mimetype),
@@ -33,15 +70,16 @@ export const getProjectExpenseEntries = async (project_id: string) => {
     }
 };
 
-export const createExpenseEntry = async (entry: NewExpenseEntry, receipt?: Express.Multer.File) => {
+export const createExpenseEntry = async (entry: NewExpenseEntry, user_id: string, receipt?: Express.Multer.File) => {
     let savedFile: string | undefined;
     try {
         const project = await projectRepository.getProjectById(entry.project_id);
         if (!project) return null;
 
+        const review = await reviewOnCreate(user_id);
         const stored = receipt ? await storeReceipt(receipt) : undefined;
         savedFile = stored?.receipt_file;
-        const created = await expenseEntryRepository.createExpenseEntry({ ...entry, ...stored });
+        const created = await expenseEntryRepository.createExpenseEntry({ ...entry, ...stored, ...review });
         return toPublicEntry(created);
     } catch (error) {
         await removeReceiptQuietly(savedFile);
@@ -49,18 +87,19 @@ export const createExpenseEntry = async (entry: NewExpenseEntry, receipt?: Expre
     }
 };
 
-export const updateExpenseEntry = async (id: string, changes: ExpenseEntryUpdate, receipt?: Express.Multer.File) => {
+export const updateExpenseEntry = async (id: string, changes: ExpenseEntryUpdate, user_id: string, receipt?: Express.Multer.File) => {
     const { remove_receipt, ...fields } = changes;
     let savedFile: string | undefined;
     try {
         const existing = await expenseEntryRepository.getExpenseEntryById(id);
         if (!existing) return null;
 
+        const review = await reviewOnEdit(user_id);
         const stored = receipt ? await storeReceipt(receipt) : undefined;
         savedFile = stored?.receipt_file;
         const receiptFields = stored ?? (remove_receipt ? noReceipt : {});
 
-        const updated = await expenseEntryRepository.updateExpenseEntry(id, { ...fields, ...receiptFields });
+        const updated = await expenseEntryRepository.updateExpenseEntry(id, { ...fields, ...receiptFields, ...review });
         if (!updated) {
             await removeReceiptQuietly(savedFile);
             return null;
@@ -70,6 +109,26 @@ export const updateExpenseEntry = async (id: string, changes: ExpenseEntryUpdate
     } catch (error) {
         await removeReceiptQuietly(savedFile);
         throw new Error(`Failed to update expense entry: ${error}`);
+    }
+};
+
+export const approveExpenseEntry = async (id: string, reviewer_id: string) => {
+    try {
+        const updated = await expenseEntryRepository.updateExpenseEntry(id, reviewedAs(ExpenseStatus.Approved, reviewer_id));
+        if (!updated) return null;
+        return toPublicEntry(updated);
+    } catch (error) {
+        throw new Error(`Failed to approve expense entry: ${error}`);
+    }
+};
+
+export const rejectExpenseEntry = async (id: string, reviewer_id: string, rejection_reason: string | null = null) => {
+    try {
+        const updated = await expenseEntryRepository.updateExpenseEntry(id, reviewedAs(ExpenseStatus.Rejected, reviewer_id, rejection_reason));
+        if (!updated) return null;
+        return toPublicEntry(updated);
+    } catch (error) {
+        throw new Error(`Failed to reject expense entry: ${error}`);
     }
 };
 

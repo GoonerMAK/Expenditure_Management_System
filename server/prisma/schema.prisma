@@ -42,6 +42,7 @@ model User {
   role_name   String?
 
   projects    Project[]
+  reviewed_expenses ExpenseEntry[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -89,17 +90,28 @@ model FinancialData {
   updated_at DateTime @updatedAt
 }
 
+enum ExpenseStatus {
+  Pending
+  Approved
+  Rejected
+}
+
 model ExpenseEntry {
-  id           String   @id @default(uuid())
-  project_id   String
-  project      Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  date         DateTime
-  vendor       String
-  amount       Float
-  notes        String?
-  receipt_file String?
-  receipt_name String?
-  receipt_type String?
+  id               String        @id @default(uuid())
+  project_id       String
+  project          Project       @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  date             DateTime
+  vendor           String
+  amount           Float
+  notes            String?
+  receipt_file     String?
+  receipt_name     String?
+  receipt_type     String?
+  status           ExpenseStatus @default(Pending)
+  rejection_reason String?
+  reviewed_by      User?         @relation(fields: [reviewed_by_id], references: [id], onDelete: SetNull)
+  reviewed_by_id   String?
+  reviewed_at      DateTime?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
