@@ -48,6 +48,8 @@ interface FinancialData {
 }
 
 
+const toFormDate = (date: string | Date | null) => (date ? new Date(date).toISOString() : '');
+
 const SingleProject = () => {
     const { id } = useParams<{ id: string }>();
     const { user } = useAuth();
@@ -93,8 +95,8 @@ const SingleProject = () => {
                 description: project.description ?? '',
                 category_id: project.category_id ?? '',
                 category_name: project.category_name,
-                start_date: new Date(project.start_date).toISOString(),
-                end_date: new Date(project.end_date).toISOString(),
+                start_date: toFormDate(project.start_date),
+                end_date: toFormDate(project.end_date),
             });
         }
     }, [project, getValues, reset]);
@@ -125,8 +127,8 @@ const SingleProject = () => {
             description: data.description,
             category_id: data.category_id || undefined,
             category_name: data.category_id ? data.category_name : undefined,
-            start_date: data.start_date,
-            end_date: data.end_date,
+            start_date: data.start_date || undefined,
+            end_date: data.end_date || undefined,
         };
     
         const financialData: Partial<FinancialDataPayload> = {

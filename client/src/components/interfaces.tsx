@@ -74,8 +74,8 @@ export interface Project {
     description: string;
     category_id: string | null;
     category_name: string;
-    start_date: string | Date;
-    end_date: string | Date;
+    start_date: string | Date | null;
+    end_date: string | Date | null;
     created_by_id: string;
     created_at: string | Date;
     updated_at: string | Date;
