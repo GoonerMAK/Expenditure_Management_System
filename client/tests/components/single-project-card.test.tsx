@@ -197,6 +197,40 @@ describe('SingleProject (single project card)', () => {
     });
   });
 
+  it('shows no dates for a project without them', async () => {
+    setup({ projectQuery: { data: { ...project, start_date: null, end_date: null } } });
+
+    await waitFor(() => expect(screen.getByLabelText('Year')).toHaveValue(2026));
+    expect(screen.getByRole('button', { name: 'Start Date of the Project' })).toHaveTextContent('Pick a date');
+    expect(screen.getByRole('button', { name: 'End Date of the Project' })).toHaveTextContent('Pick a date');
+  });
+
+  it('keeps the dates empty when saving a project without them', async () => {
+    const { updateProject, user } = setup({ projectQuery: { data: { ...project, start_date: null, end_date: null } } });
+    await waitFor(() => expect(screen.getByLabelText('Year')).toHaveValue(2026));
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.click(screen.getByRole('button', { name: 'Update' }));
+
+    await waitFor(() => expect(updateProject).toHaveBeenCalled());
+    const { data } = updateProject.mock.calls[0][0];
+    expect(data.start_date).toBeUndefined();
+    expect(data.end_date).toBeUndefined();
+  });
+
+  it('sends the dates of a project that has them', async () => {
+    const { updateProject, user } = setup();
+    await waitFor(() => expect(screen.getByLabelText('Year')).toHaveValue(2026));
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.click(screen.getByRole('button', { name: 'Update' }));
+
+    await waitFor(() => expect(updateProject).toHaveBeenCalled());
+    const { data } = updateProject.mock.calls[0][0];
+    expect(data.start_date).toBe(project.start_date);
+    expect(data.end_date).toBe(project.end_date);
+  });
+
   it('shows Uncategorised for a project without a category', async () => {
     setup({ projectQuery: { data: { ...project, category_id: null, category_name: '' } } });
 
