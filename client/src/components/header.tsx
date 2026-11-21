@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import useAuth from '../lib/use-auth';
+import NotificationBell from './notification-bell';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -25,6 +26,8 @@ const Header = () => {
       <div className="flex-1 text-center">
         Welcome {userName}
       </div>
+
+      <NotificationBell />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

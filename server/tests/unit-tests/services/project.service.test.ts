@@ -30,6 +30,7 @@ describe('project.service', () => {
         START,
         END,
         OTHER_ID,
+        90,
       );
 
       expect(result).toEqual(project);
@@ -41,6 +42,7 @@ describe('project.service', () => {
         START,
         END,
         OTHER_ID,
+        90,
       );
     });
 
@@ -51,6 +53,7 @@ describe('project.service', () => {
 
       expect(repo.createProject).toHaveBeenCalledWith(
         'Bridge Renovation',
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -84,6 +87,7 @@ describe('project.service', () => {
         END,
         OTHER_ID,
         USER_ID,
+        90,
       );
 
       expect(result).toEqual(project);
@@ -97,6 +101,7 @@ describe('project.service', () => {
         END,
         OTHER_ID,
         USER_ID,
+        90,
       );
     });
 
@@ -107,6 +112,7 @@ describe('project.service', () => {
 
       expect(repo.updateProject).toHaveBeenCalledWith(
         ID,
+        undefined,
         undefined,
         undefined,
         undefined,

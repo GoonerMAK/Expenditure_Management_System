@@ -20,6 +20,11 @@ export const projectSchema = z.object({
     category_name: z.string().optional(),
     start_date: z.preprocess(datePreprocess, z.date().optional()),
     end_date: z.preprocess(datePreprocess, z.date().optional()),
+    alert_threshold: z.coerce.number({ invalid_type_error: "Alert threshold must be a number" })
+        .int({ message: "Alert threshold must be a whole number" })
+        .min(1, { message: "Alert threshold must be between 1 and 100" })
+        .max(100, { message: "Alert threshold must be between 1 and 100" })
+        .optional(),
 });
 
 export type ProjectParams = z.infer<typeof projectParamsSchema>

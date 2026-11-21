@@ -44,6 +44,7 @@ model User {
   projects    Project[]
   reviewed_expenses ExpenseEntry[]
   audit_logs        AuditLog[]
+  notifications     Notification[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -71,6 +72,10 @@ model Project {
   created_by_id  String
   financial_data FinancialData[]
   expenses       ExpenseEntry[]
+  notifications  Notification[]
+
+  alert_threshold    Int               @default(80)
+  budget_alert_level BudgetAlertLevel?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -147,4 +152,28 @@ model AuditLog {
   created_at DateTime @default(now())
 
   @@index([project_id, created_at])
+}
+
+enum BudgetAlertLevel {
+  Threshold
+  OverBudget
+}
+
+model Notification {
+  id           String           @id @default(uuid())
+  user         User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id      String
+  project      Project?         @relation(fields: [project_id], references: [id], onDelete: SetNull)
+  project_id   String?
+  project_name String
+  level        BudgetAlertLevel
+  threshold    Int
+  budget       Float
+  spent        Float
+  percent_used Float?
+  read_at      DateTime?
+
+  created_at DateTime @default(now())
+
+  @@index([user_id, created_at])
 }

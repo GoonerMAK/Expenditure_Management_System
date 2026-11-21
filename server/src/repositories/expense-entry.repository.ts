@@ -1,6 +1,7 @@
 import prisma from '../db.js';
 import { AuditAction, AuditEntity, ExpenseStatus, Prisma } from '@prisma/client';
 import { recordAudit } from './audit-log.repository.js';
+import { checkBudgetAlert } from './budget-alert.repository.js';
 
 type Db = Prisma.TransactionClient;
 
@@ -61,6 +62,7 @@ export const createExpenseEntry = async (data: ExpenseEntryData, created_by_id?:
         const { year, month } = monthOf(entry.date);
         await syncMonthlyExpenditure(tx, entry.project_id, year, month);
         await recordAudit(tx, AuditEntity.Expense, AuditAction.Created, created_by_id, null, entry);
+        await checkBudgetAlert(tx, entry.project_id);
         return entry;
     });
 };
@@ -83,6 +85,7 @@ export const updateExpenseEntry = async (
             await syncMonthlyExpenditure(tx, entry.project_id, previous.year, previous.month);
         }
         await recordAudit(tx, AuditEntity.Expense, action, changed_by_id, before, entry);
+        await checkBudgetAlert(tx, entry.project_id);
         return entry;
     });
 };
@@ -96,6 +99,7 @@ export const deleteExpenseEntry = async (id: string, deleted_by_id?: string) => 
         const { year, month } = monthOf(entry.date);
         await syncMonthlyExpenditure(tx, entry.project_id, year, month);
         await recordAudit(tx, AuditEntity.Expense, AuditAction.Deleted, deleted_by_id, entry, null);
+        await checkBudgetAlert(tx, entry.project_id);
         return entry;
     });
 };

@@ -17,6 +17,7 @@ const body = {
   category_name: 'Infrastructure',
   start_date: START,
   end_date: END,
+  alert_threshold: 90,
   created_by_id: OTHER_ID,
 };
 
@@ -41,6 +42,7 @@ describe('project.controller', () => {
         START,
         END,
         ID,
+        90,
       );
       expectResponse(res, 201, project);
     });
@@ -73,6 +75,7 @@ describe('project.controller', () => {
         END,
         undefined,
         USER_ID,
+        90,
       );
       expectResponse(res, 200, project);
     });

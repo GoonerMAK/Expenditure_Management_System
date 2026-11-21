@@ -2,6 +2,7 @@ import prisma from '../../../src/db.js';
 import * as financialDataRepository from '../../../src/repositories/financial-data.repository.js';
 import * as auditLogRepository from '../../../src/repositories/audit-log.repository.js';
 import * as expenseEntryRepository from '../../../src/repositories/expense-entry.repository.js';
+import * as budgetAlertRepository from '../../../src/repositories/budget-alert.repository.js';
 import { buildFinancialData, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 
 jest.mock('../../../src/db.js', () => ({
@@ -11,10 +12,12 @@ jest.mock('../../../src/db.js', () => ({
 
 jest.mock('../../../src/repositories/audit-log.repository.js');
 jest.mock('../../../src/repositories/expense-entry.repository.js');
+jest.mock('../../../src/repositories/budget-alert.repository.js');
 
 const db = prisma as unknown as { $transaction: jest.Mock };
 const audit = jest.mocked(auditLogRepository);
 const expenses = jest.mocked(expenseEntryRepository);
+const alerts = jest.mocked(budgetAlertRepository);
 
 const tx = {
   financialData: {
@@ -47,6 +50,7 @@ describe('financial-data.repository', () => {
       expect(db.$transaction).toHaveBeenCalledTimes(1);
       expect(expenses.syncMonthIfItHasEntries).toHaveBeenCalledWith(tx, OTHER_ID, 2026, 3);
       expect(audit.recordAudit).toHaveBeenCalledWith(tx, 'Budget', 'Created', USER_ID, null, saved);
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, OTHER_ID);
     });
   });
 
@@ -63,6 +67,21 @@ describe('financial-data.repository', () => {
 
       expect(tx.financialData.update).toHaveBeenCalledWith({ where: { id: ID }, data: { initial_budget: 15000 } });
       expect(audit.recordAudit).toHaveBeenCalledWith(tx, 'Budget', 'Updated', USER_ID, before, saved);
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledTimes(1);
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, OTHER_ID);
+    });
+
+    it('checks the budget alerts of both projects when the month moves to another project', async () => {
+      const before = buildFinancialData({ project_id: ID });
+      const saved = buildFinancialData();
+      tx.financialData.findFirst.mockResolvedValue(before);
+      tx.financialData.update.mockResolvedValue(saved);
+      tx.financialData.findUniqueOrThrow.mockResolvedValue(saved);
+
+      await financialDataRepository.updateFinancialData(ID, undefined, undefined, undefined, undefined, undefined, OTHER_ID, undefined, USER_ID);
+
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, OTHER_ID);
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, ID);
     });
   });
 
@@ -75,6 +94,7 @@ describe('financial-data.repository', () => {
 
       expect(tx.financialData.delete).toHaveBeenCalledWith({ where: { id: ID } });
       expect(audit.recordAudit).toHaveBeenCalledWith(tx, 'Budget', 'Deleted', USER_ID, deleted, null);
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, OTHER_ID);
     });
   });
 });

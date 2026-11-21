@@ -130,6 +130,42 @@ describe('AddProjectForm', () => {
     await waitFor(() => expect(trigger).toHaveBeenCalledWith(expect.objectContaining({ created_by_id: '' })));
   });
 
+  describe('budget alert threshold', () => {
+    it('starts at 80 percent', () => {
+      setup();
+
+      expect(screen.getByLabelText('Budget Alert Threshold (%)')).toHaveValue(80);
+    });
+
+    it('sends the chosen threshold as a number', async () => {
+      const { trigger, user } = setup();
+
+      await user.type(screen.getByLabelText('Project Name'), 'Bridge Renovation');
+      await user.clear(screen.getByLabelText('Budget Alert Threshold (%)'));
+      await user.type(screen.getByLabelText('Budget Alert Threshold (%)'), '90');
+      await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+      await waitFor(() => expect(trigger).toHaveBeenCalledWith(expect.objectContaining({ alert_threshold: 90 })));
+    });
+
+    it.each([
+      ['0', 'Alert threshold must be between 1 and 100'],
+      ['101', 'Alert threshold must be between 1 and 100'],
+      ['85.5', 'Alert threshold must be a whole number'],
+      ['', 'Alert threshold is required'],
+    ])('does not submit a threshold of "%s"', async (value, message) => {
+      const { trigger, user } = setup();
+
+      await user.type(screen.getByLabelText('Project Name'), 'Bridge Renovation');
+      await user.clear(screen.getByLabelText('Budget Alert Threshold (%)'));
+      if (value) await user.type(screen.getByLabelText('Budget Alert Threshold (%)'), value);
+      await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(trigger).not.toHaveBeenCalled();
+    });
+  });
+
   describe('adding a category from the picker', () => {
     const contributor = { user: { id: 'u1', role_name: 'Contributor' } };
 

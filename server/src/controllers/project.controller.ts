@@ -3,7 +3,7 @@ import * as projectService from '../services/project.service.js';
 import { Project, ProjectListQuery, ProjectParams } from '../validators/project.validator.js';
 
 export const createProject = async (req: Request<unknown, unknown, Project, unknown>, res: Response) => {
-    const { project_name, description, category_id, category_name, start_date, end_date } = req.body;
+    const { project_name, description, category_id, category_name, start_date, end_date, alert_threshold } = req.body;
     const created_by_id = req.user?.id;
     try {
         const newProject = await projectService.createProject(
@@ -13,7 +13,8 @@ export const createProject = async (req: Request<unknown, unknown, Project, unkn
             category_name,
             start_date,
             end_date,
-            created_by_id
+            created_by_id,
+            alert_threshold
         );
         res.status(201).json(newProject);
     } catch (error) {
@@ -23,7 +24,7 @@ export const createProject = async (req: Request<unknown, unknown, Project, unkn
 
 export const updateProject = async (req: Request<ProjectParams, unknown, Project, unknown>, res: Response) => {
     const { id } = req.params;
-    const { project_name, description, category_id, category_name, start_date, end_date } = req.body;
+    const { project_name, description, category_id, category_name, start_date, end_date, alert_threshold } = req.body;
     try {
         const updatedProject = await projectService.updateProject(
             id,
@@ -34,7 +35,8 @@ export const updateProject = async (req: Request<ProjectParams, unknown, Project
             start_date,
             end_date,
             undefined,
-            req.user?.id
+            req.user?.id,
+            alert_threshold
         );
         if (!updatedProject) {
             res.status(404).json({ error: `Project with id ${id} not found` });

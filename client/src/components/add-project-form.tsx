@@ -8,6 +8,7 @@ import { useAddProjectMutation } from '../redux/project-api';
 
 import { Check, ChevronsUpDown, CalendarIcon } from "lucide-react"
 import { cn } from '../lib/utils';
+import { alertThresholdRules, DEFAULT_ALERT_THRESHOLD } from '../lib/alert-threshold';
 import { Button } from "../components/ui/button";
 import { Calendar } from './ui/calendar';
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ interface Project {
     category_name: string;
     start_date: Date;
     end_date: Date;
+    alert_threshold: number;
     created_by_id: string;
     created_at: Date;
     updated_at: Date;
@@ -54,6 +56,7 @@ const AddProjectForm = () => {
             category_name: '',
             start_date: new Date(),
             end_date: new Date(),
+            alert_threshold: DEFAULT_ALERT_THRESHOLD,
             created_by_id: '',
             created_at: new Date(),
             updated_at: new Date(),
@@ -83,7 +86,7 @@ const AddProjectForm = () => {
 
     const onSubmit = async (data: Project) => {
         try {
-            const response = await addProject(data).unwrap();
+            const response = await addProject({ ...data, alert_threshold: Number(data.alert_threshold) }).unwrap();
             console.log('Server response:', response);
 
             toast.success("Project has been created")
@@ -301,6 +304,24 @@ const AddProjectForm = () => {
                                         Presumed date when the project will be finished
                                     </FormDescription>
                                     <br></br>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="alert_threshold"
+                            rules={alertThresholdRules}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Budget Alert Threshold (%)</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" {...field} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Notify when spending reaches this share of the budget
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

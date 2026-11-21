@@ -15,6 +15,7 @@ const FIELD_LABELS: Record<string, string> = {
   category_name: 'Category',
   start_date: 'Start date',
   end_date: 'End date',
+  alert_threshold: 'Alert threshold',
   year: 'Year',
   month: 'Month',
   initial_budget: 'Initial budget',
@@ -33,6 +34,8 @@ const DATE_FIELDS = ['start_date', 'end_date', 'date'];
 
 const AMOUNT_FIELDS = ['initial_budget', 'revised_budget', 'expenditure', 'amount'];
 
+const PERCENT_FIELDS = ['alert_threshold'];
+
 const ACTION_VERBS: Record<HistoryAction, string> = {
   Created: 'added',
   Updated: 'changed',
@@ -45,6 +48,7 @@ const formatValue = (field: string, value: HistoryValue) => {
   if (value === null || value === '') return 'empty';
   if (DATE_FIELDS.includes(field)) return formatDay(String(value));
   if (AMOUNT_FIELDS.includes(field) && typeof value === 'number') return formatAmount(value);
+  if (PERCENT_FIELDS.includes(field)) return `${value}%`;
   return String(value);
 };
 

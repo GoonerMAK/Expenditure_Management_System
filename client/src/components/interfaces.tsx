@@ -77,8 +77,30 @@ export interface Project {
     start_date: string | Date | null;
     end_date: string | Date | null;
     created_by_id: string;
+    alert_threshold: number;
     created_at: string | Date;
     updated_at: string | Date;
+}
+
+export type BudgetAlertLevel = 'Threshold' | 'OverBudget';
+
+export interface Notification {
+    id: string;
+    user_id: string;
+    project_id: string | null;
+    project_name: string;
+    level: BudgetAlertLevel;
+    threshold: number;
+    budget: number;
+    spent: number;
+    percent_used: number | null;
+    read_at: string | null;
+    created_at: string;
+}
+
+export interface NotificationList {
+    data: Notification[];
+    unread_count: number;
 }
 
 export type ProjectSort = 'name_asc' | 'name_desc' | 'start_date_desc' | 'start_date_asc' | 'spend_desc' | 'spend_asc';

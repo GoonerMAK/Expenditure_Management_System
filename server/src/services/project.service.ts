@@ -11,7 +11,8 @@ export const createProject = async (
     category_name?: string,
     start_date?: Date,
     end_date?: Date,
-    created_by_id?: string
+    created_by_id?: string,
+    alert_threshold?: number
 ) => {
     try {
         const project = await projectRepository.createProject(
@@ -21,7 +22,8 @@ export const createProject = async (
             category_name,
             start_date,
             end_date,
-            created_by_id
+            created_by_id,
+            alert_threshold
         );
         return project;
     } catch (error) {
@@ -38,7 +40,8 @@ export const updateProject = async (
     start_date?: Date,
     end_date?: Date,
     created_by_id?: string,
-    changed_by_id?: string
+    changed_by_id?: string,
+    alert_threshold?: number
 ) => {
     try {
         const updatedProject = await projectRepository.updateProject(
@@ -50,7 +53,8 @@ export const updateProject = async (
             start_date,
             end_date,
             created_by_id,
-            changed_by_id
+            changed_by_id,
+            alert_threshold
         );
         if (!updatedProject) {
             throw new Error(`Project with id ${id} not found`);
