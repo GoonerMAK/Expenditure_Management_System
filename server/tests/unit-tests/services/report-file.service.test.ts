@@ -55,6 +55,11 @@ describe('report-file.service', () => {
       expect(toCsv(buildReport({ name: 'The "Big" Bridge' }))).toContain('"Project","The ""Big"" Bridge"');
       expect(toCsv(buildReport({ name: '=SUM(A1)' }))).toContain('"Project","\'=SUM(A1)"');
     });
+
+    it('keeps names that start with a tab or a line break from running as formulas', () => {
+      expect(toCsv(buildReport({ name: '\t=SUM(A1)' }))).toContain('"Project","\'\t=SUM(A1)"');
+      expect(toCsv(buildReport({ name: '\r=SUM(A1)' }))).toContain('"Project","\'\r=SUM(A1)"');
+    });
   });
 
   describe('toPdf', () => {
@@ -78,6 +83,16 @@ describe('report-file.service', () => {
         'Total',
         '1,550.5',
       ]));
+    });
+
+    it('embeds a font that can show Bangla names', async () => {
+      const registerFont = jest.spyOn(PDFDocument.prototype, 'registerFont');
+
+      const pdf = await toPdf(buildReport({ name: 'সেতু প্রকল্প' }));
+
+      expect(registerFont).toHaveBeenCalledWith('Body', expect.stringMatching(/HindSiliguri-Regular\.ttf$/));
+      expect(registerFont).toHaveBeenCalledWith('Bold', expect.stringMatching(/HindSiliguri-Bold\.ttf$/));
+      expect(pdf.toString('latin1')).toContain('HindSiliguri');
     });
 
     it('shows N/A for the percentage when there is no budget', async () => {
