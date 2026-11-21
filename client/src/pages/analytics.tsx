@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PageLayout from '../components/page-layout';
 import BudgetChart from '../components/budget-chart';
+import ReportExport from '../components/report-export';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -85,6 +86,8 @@ const Analytics = () => {
             />
           </>
         )}
+
+        <ReportExport projects={projects} categories={categories} />
       </main>
     </PageLayout>
   );

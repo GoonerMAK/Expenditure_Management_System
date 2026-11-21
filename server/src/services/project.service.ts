@@ -1,6 +1,7 @@
 import * as projectRepository from '../repositories/project.repository.js';
 import * as auditLogRepository from '../repositories/audit-log.repository.js';
 import { getUncategorisedLabel } from '../categories.js';
+import { FinancialEntry, groupEntriesByPeriod, sumBudget, sumSpent, toBudgetTotals } from '../budget.js';
 import { ProjectListFilters, ProjectSort } from '../validators/project.validator.js';
 
 export const createProject = async (
@@ -154,45 +155,10 @@ export const getProjectById = async (id: string) => {
 };
 
 
-type FinancialEntry = {
-    expenditure: number | null;
-    initial_budget: number | null;
-    revised_budget: number | null;
-};
-
-// A revised budget replaces the initial one for that entry
-const sumBudget = (entries: FinancialEntry[]) =>
-    entries.reduce((sum, entry) => sum + (entry.revised_budget ?? entry.initial_budget ?? 0), 0);
-
-const sumSpent = (entries: FinancialEntry[]) =>
-    entries.reduce((sum, entry) => sum + (entry.expenditure || 0), 0);
-
-const toBudgetTotals = (budget: number, spent: number) => ({
-    budget,
-    spent,
-    remaining: budget - spent,
-    percent_used: budget > 0 ? Math.round((spent / budget) * 1000) / 10 : null,
-    over_budget: spent > budget,
-});
-
 const toTrendPoint = (entries: FinancialEntry[]) => ({
     budget: sumBudget(entries),
     spent: sumSpent(entries),
 });
-
-const groupEntriesByPeriod = <T extends FinancialEntry>(entries: T[], periodOf: (entry: T) => string) => {
-    const groups = new Map<string, T[]>();
-    for (const entry of entries) {
-        const period = periodOf(entry);
-        const group = groups.get(period);
-        if (group) {
-            group.push(entry);
-        } else {
-            groups.set(period, [entry]);
-        }
-    }
-    return [...groups.values()];
-};
 
 export const getBudgetSummary = async () => {
     try {

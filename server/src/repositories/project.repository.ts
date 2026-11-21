@@ -218,3 +218,11 @@ export const getProjectFinancialData = async (id: string) => {
         orderBy: [{ year: 'asc' }, { month: 'asc' }],
     });
 };
+
+export const getCategoryFinancialData = async (category_id: string | null) => {
+    return await prisma.financialData.findMany({
+        where: { project: { category_id } },
+        select: { year: true, month: true, expenditure: true, initial_budget: true, revised_budget: true },
+        orderBy: [{ year: 'asc' }, { month: 'asc' }],
+    });
+};
