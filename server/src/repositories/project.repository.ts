@@ -3,6 +3,7 @@ import { AuditAction, AuditEntity, Prisma, Project } from '@prisma/client';
 import { ProjectListFilters, ProjectSort } from '../validators/project.validator.js';
 import { recordAudit } from './audit-log.repository.js';
 import { checkBudgetAlert } from './budget-alert.repository.js';
+import { lockProjects } from './project-lock.repository.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -105,6 +106,7 @@ export const updateProject = async (
     if (alert_threshold !== undefined) data.alert_threshold = alert_threshold;
 
     return await prisma.$transaction(async (tx) => {
+        await lockProjects(tx, id);
         const before = await tx.project.findUnique({ where: { id } });
         const project = await tx.project.update({
             where: { id },

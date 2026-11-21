@@ -1,6 +1,7 @@
 import prisma from '../../../src/db.js';
 import * as expenseEntryRepository from '../../../src/repositories/expense-entry.repository.js';
 import * as budgetAlertRepository from '../../../src/repositories/budget-alert.repository.js';
+import * as projectLockRepository from '../../../src/repositories/project-lock.repository.js';
 import { buildExpenseEntry, buildProject, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 
 jest.mock('../../../src/db.js', () => ({
@@ -9,8 +10,12 @@ jest.mock('../../../src/db.js', () => ({
 }));
 
 jest.mock('../../../src/repositories/budget-alert.repository.js');
+jest.mock('../../../src/repositories/project-lock.repository.js');
 
 const alerts = jest.mocked(budgetAlertRepository);
+const locks = jest.mocked(projectLockRepository);
+
+const firstCall = (mock: jest.Mock) => mock.mock.invocationCallOrder[0];
 
 const db = prisma as unknown as {
   $transaction: jest.Mock;
@@ -138,6 +143,16 @@ describe('expense-entry.repository', () => {
       expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, OTHER_ID);
     });
 
+    it('locks the project before creating the entry', async () => {
+      tx.expenseEntry.create.mockResolvedValue({ ...buildExpenseEntry(), reviewed_by: null });
+      tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(null));
+
+      await expenseEntryRepository.createExpenseEntry({ project_id: OTHER_ID, date: new Date('2026-03-12'), vendor: 'Acme', amount: 10 });
+
+      expect(locks.lockProjects).toHaveBeenCalledWith(tx, OTHER_ID);
+      expect(firstCall(locks.lockProjects)).toBeLessThan(firstCall(tx.expenseEntry.create));
+    });
+
     it('records who created the entry in the same transaction', async () => {
       const entry = { ...buildExpenseEntry({ status: 'Pending' }), reviewed_by: null };
       tx.expenseEntry.create.mockResolvedValue(entry);
@@ -170,6 +185,17 @@ describe('expense-entry.repository', () => {
       expect(tx.expenseEntry.aggregate).toHaveBeenCalledTimes(1);
       expect(tx.financialData.updateMany).toHaveBeenCalledWith(monthUpdate(3, 250.75));
       expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, OTHER_ID);
+    });
+
+    it('locks the project of the entry before changing it', async () => {
+      tx.expenseEntry.findUnique.mockResolvedValue(buildExpenseEntry());
+      tx.expenseEntry.update.mockResolvedValue({ ...buildExpenseEntry(), reviewed_by: null });
+      tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(250.75));
+
+      await expenseEntryRepository.updateExpenseEntry(ID, { amount: 250.75 });
+
+      expect(locks.lockProjects).toHaveBeenCalledWith(tx, OTHER_ID);
+      expect(firstCall(locks.lockProjects)).toBeLessThan(firstCall(tx.expenseEntry.update));
     });
 
     it('records an approval as its own action with the status change', async () => {
@@ -240,6 +266,7 @@ describe('expense-entry.repository', () => {
       expect(tx.financialData.updateMany).not.toHaveBeenCalled();
       expect(tx.auditLog.create).not.toHaveBeenCalled();
       expect(alerts.checkBudgetAlert).not.toHaveBeenCalled();
+      expect(locks.lockProjects).not.toHaveBeenCalled();
     });
   });
 
@@ -254,6 +281,16 @@ describe('expense-entry.repository', () => {
       expect(tx.expenseEntry.delete).toHaveBeenCalledWith({ where: { id: ID } });
       expect(tx.financialData.updateMany).toHaveBeenCalledWith(monthUpdate(3, 0));
       expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, OTHER_ID);
+    });
+
+    it('locks the project of the entry before deleting it', async () => {
+      tx.expenseEntry.findUnique.mockResolvedValue(buildExpenseEntry());
+      tx.expenseEntry.aggregate.mockResolvedValue(approvedSum(null));
+
+      await expenseEntryRepository.deleteExpenseEntry(ID);
+
+      expect(locks.lockProjects).toHaveBeenCalledWith(tx, OTHER_ID);
+      expect(firstCall(locks.lockProjects)).toBeLessThan(firstCall(tx.expenseEntry.delete));
     });
 
     it('records who deleted the entry and what it held', async () => {
