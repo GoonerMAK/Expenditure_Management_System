@@ -159,7 +159,7 @@ test.describe('Analytics page', () => {
     const card = page.locator('.rounded-lg', { has: page.getByText('Spending by category') }).first();
     await expect(card.getByRole('alert')).toContainText("Couldn't load this chart. Please try again.");
     // The rest of the page still works
-    await expect(page.getByLabel('Project')).toBeEnabled();
+    await expect(page.getByLabel('Project', { exact: true })).toBeEnabled();
 
     fail = false;
     await card.getByRole('button', { name: 'Try again' }).click();
@@ -191,7 +191,7 @@ test.describe('Analytics page', () => {
     });
     await selectTrendProject(page, second);
 
-    await expect(page.getByLabel('Project')).toContainText(second);
+    await expect(page.getByLabel('Project', { exact: true })).toContainText(second);
     await expect(card).toContainText('Loading...');
     await expect(card).not.toContainText(first);
 
