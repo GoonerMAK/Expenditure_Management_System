@@ -37,8 +37,7 @@ const toPeriodLabel = (period: ReportPeriod, entry: DatedEntry) =>
 const toTotals = (entries: FinancialEntry[]) => toBudgetTotals(sumBudget(entries), sumSpent(entries));
 
 const buildReport = (subject: ReportSubject, name: string, entries: DatedEntry[], { period, year }: ReportOptions): Report => {
-    const entriesInYear = year === undefined ? entries : entries.filter((entry) => entry.year === year);
-    const rows = groupEntriesByPeriod(entriesInYear, (entry) => toPeriodLabel(period, entry)).map((items) => ({
+    const rows = groupEntriesByPeriod(entries, (entry) => toPeriodLabel(period, entry)).map((items) => ({
         period: toPeriodLabel(period, items[0]),
         ...toTotals(items),
     }));
@@ -49,7 +48,7 @@ const buildReport = (subject: ReportSubject, name: string, entries: DatedEntry[]
         period,
         year: year ?? null,
         rows,
-        total: toTotals(entriesInYear),
+        total: toTotals(entries),
     };
 };
 
@@ -59,7 +58,7 @@ export const getProjectReport = async (id: string, options: ReportOptions) => {
         if (!project) {
             return null;
         }
-        const entries = await projectRepository.getProjectFinancialData(id);
+        const entries = await projectRepository.getProjectFinancialData(id, options.year);
         return buildReport('Project', project.project_name, entries, options);
     } catch (error) {
         throw new Error(`Failed to build project report: ${error}`);
@@ -79,7 +78,7 @@ export const getCategoryReport = async (id: string, options: ReportOptions) => {
         if (!category) {
             return null;
         }
-        const entries = await projectRepository.getCategoryFinancialData(category.id);
+        const entries = await projectRepository.getCategoryFinancialData(category.id, options.year);
         return buildReport('Category', category.category_name, entries, options);
     } catch (error) {
         throw new Error(`Failed to build category report: ${error}`);

@@ -217,17 +217,17 @@ export const getProjectsWithFinancialData = async () => {
     });
 };
 
-export const getProjectFinancialData = async (id: string) => {
+export const getProjectFinancialData = async (id: string, year?: number) => {
     return await prisma.financialData.findMany({
-        where: { project_id: id },
+        where: { project_id: id, year },
         select: { year: true, month: true, expenditure: true, initial_budget: true, revised_budget: true },
         orderBy: [{ year: 'asc' }, { month: 'asc' }],
     });
 };
 
-export const getCategoryFinancialData = async (category_id: string | null) => {
+export const getCategoryFinancialData = async (category_id: string | null, year?: number) => {
     return await prisma.financialData.findMany({
-        where: { project: { category_id } },
+        where: { project: { category_id }, year },
         select: { year: true, month: true, expenditure: true, initial_budget: true, revised_budget: true },
         orderBy: [{ year: 'asc' }, { month: 'asc' }],
     });

@@ -302,5 +302,35 @@ describe('project.repository', () => {
         orderBy: [{ year: 'asc' }, { month: 'asc' }],
       });
     });
+
+    it('reads only the chosen year when one is given', async () => {
+      db.financialData.findMany.mockResolvedValue([]);
+
+      await projectRepository.getCategoryFinancialData('c1', 2026);
+
+      expect(db.financialData.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { project: { category_id: 'c1' }, year: 2026 } }));
+    });
+  });
+
+  describe('getProjectFinancialData', () => {
+    it('reads the financial data of the project by date', async () => {
+      db.financialData.findMany.mockResolvedValue([]);
+
+      await projectRepository.getProjectFinancialData(ID);
+
+      expect(db.financialData.findMany).toHaveBeenCalledWith({
+        where: { project_id: ID },
+        select: { year: true, month: true, expenditure: true, initial_budget: true, revised_budget: true },
+        orderBy: [{ year: 'asc' }, { month: 'asc' }],
+      });
+    });
+
+    it('reads only the chosen year when one is given', async () => {
+      db.financialData.findMany.mockResolvedValue([]);
+
+      await projectRepository.getProjectFinancialData(ID, 2026);
+
+      expect(db.financialData.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { project_id: ID, year: 2026 } }));
+    });
   });
 });
