@@ -3,6 +3,7 @@ import { AuditAction, AuditEntity, FinancialData } from '@prisma/client';
 import { syncMonthIfItHasEntries } from './expense-entry.repository.js';
 import { recordAudit } from './audit-log.repository.js';
 import { checkBudgetAlert } from './budget-alert.repository.js';
+import { lockProjects } from './project-lock.repository.js';
 
 export const createFinancialData = async (
     year: number,
@@ -15,6 +16,7 @@ export const createFinancialData = async (
     created_by_id?: string,
 ) => {
     return await prisma.$transaction(async (tx) => {
+        await lockProjects(tx, project_id);
         const created = await tx.financialData.create({
             data: {
                 year,
@@ -59,6 +61,7 @@ export const updateFinancialData = async (
     if (project_name !== undefined) data.project_name = project_name;
 
     return await prisma.$transaction(async (tx) => {
+        await lockProjects(tx, id, project_id);
         const financialData = await tx.financialData.findFirst({
             where: { project_id: id },
         });
@@ -80,6 +83,8 @@ export const updateFinancialData = async (
 
 export const deleteFinancialData = async (id: string, deleted_by_id?: string) => {
     return await prisma.$transaction(async (tx) => {
+        const existing = await tx.financialData.findUnique({ where: { id }, select: { project_id: true } });
+        await lockProjects(tx, existing?.project_id);
         const deleted = await tx.financialData.delete({
             where: { id },
         });

@@ -16,6 +16,7 @@ describe("---------------- budget alert routes ----------------", () => {
     let ownerId: string;
     let categoryId: string;
     let projectId: string;
+    const extraProjectIds: string[] = [];
 
     const createUser = (label: string, role_name: string) => prisma.user.create({
         data: {
@@ -34,9 +35,21 @@ describe("---------------- budget alert routes ----------------", () => {
         .field('vendor', 'Steel Supplies')
         .field('amount', String(amount));
 
-    const ownerNotifications = async () => {
+    const ownerNotifications = async (id = projectId) => {
         const response = await request.get('/api/notifications').set('Cookie', `jwt=${ownerToken}`);
-        return response.body.data.filter((notification: { project_id: string }) => notification.project_id === projectId);
+        return response.body.data.filter((notification: { project_id: string }) => notification.project_id === id);
+    };
+
+    const createProjectWithBudget = async (label: string, initial_budget: number, expenditure: number) => {
+        const project_name = `${projectName} ${label}`;
+        const project = await request.post('/api/projects')
+            .set('Cookie', `jwt=${ownerToken}`)
+            .send({ project_name, category_id: categoryId, alert_threshold: 80 });
+        extraProjectIds.push(project.body.id);
+        await request.post('/api/financialData')
+            .set('Cookie', `jwt=${ownerToken}`)
+            .send({ year: 2026, month: 3, initial_budget, expenditure, project_id: project.body.id, project_name });
+        return { id: project.body.id as string, project_name };
     };
 
     beforeAll(async () => {
@@ -59,9 +72,10 @@ describe("---------------- budget alert routes ----------------", () => {
     });
 
     afterAll(async () => {
-        await prisma.notification.deleteMany({ where: { project_name: projectName } });
-        await prisma.project.deleteMany({ where: { id: projectId } });
-        await prisma.auditLog.deleteMany({ where: { project_id: projectId } });
+        const projectIds = [projectId, ...extraProjectIds];
+        await prisma.notification.deleteMany({ where: { project_id: { in: projectIds } } });
+        await prisma.project.deleteMany({ where: { id: { in: projectIds } } });
+        await prisma.auditLog.deleteMany({ where: { project_id: { in: projectIds } } });
         await prisma.category.deleteMany({ where: { id: categoryId } });
         await prisma.user.deleteMany({ where: { id: { in: [adminId, ownerId] } } });
         await server.close();
@@ -138,6 +152,51 @@ describe("---------------- budget alert routes ----------------", () => {
         expect(response.status).toBe(200);
         const after = await request.get('/api/notifications').set('Cookie', `jwt=${ownerToken}`);
         expect(after.body.unread_count).toBe(0);
+    });
+
+    it("should alert once when the project and its budget are saved at the same time", async () => {
+        const project = await createProjectWithBudget('saved together', 1000, 500);
+
+        await Promise.all([
+            request.put(`/api/projects/${project.id}`)
+                .set('Cookie', `jwt=${ownerToken}`)
+                .send({ project_name: project.project_name, alert_threshold: 55 }),
+            request.put(`/api/financialData/${project.id}`)
+                .set('Cookie', `jwt=${ownerToken}`)
+                .send({ year: 2026, month: 3, initial_budget: 1000, expenditure: 600 }),
+        ]);
+
+        const notifications = await ownerNotifications(project.id);
+        expect(notifications).toEqual([expect.objectContaining({ level: 'Threshold', threshold: 55, spent: 600 })]);
+    });
+
+    it("should alert once when two expenses pass the threshold at the same time", async () => {
+        const project = await createProjectWithBudget('two expenses', 1000, 790);
+        const addExpense = (date: string) => request.post('/api/expenses')
+            .set('Cookie', `jwt=${adminToken}`)
+            .field('project_id', project.id)
+            .field('date', date)
+            .field('vendor', 'Steel Supplies')
+            .field('amount', '20');
+
+        await Promise.all([addExpense('2026-04-10'), addExpense('2026-05-10')]);
+
+        expect(await ownerNotifications(project.id)).toHaveLength(1);
+    });
+
+    it("should keep one budget row for a new month when two expenses land in it at the same time", async () => {
+        const project = await createProjectWithBudget('same month', 1000, 0);
+        const addExpense = () => request.post('/api/expenses')
+            .set('Cookie', `jwt=${adminToken}`)
+            .field('project_id', project.id)
+            .field('date', '2026-06-10')
+            .field('vendor', 'Steel Supplies')
+            .field('amount', '60');
+
+        await Promise.all([addExpense(), addExpense()]);
+
+        const months = await prisma.financialData.findMany({ where: { project_id: project.id, year: 2026, month: 6 } });
+        expect(months).toEqual([expect.objectContaining({ expenditure: 120 })]);
     });
 
     it("should return 400 for an invalid notification ID", async () => {

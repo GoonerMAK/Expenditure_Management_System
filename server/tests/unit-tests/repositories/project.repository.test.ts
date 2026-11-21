@@ -2,6 +2,7 @@ import prisma from '../../../src/db.js';
 import * as projectRepository from '../../../src/repositories/project.repository.js';
 import * as auditLogRepository from '../../../src/repositories/audit-log.repository.js';
 import * as budgetAlertRepository from '../../../src/repositories/budget-alert.repository.js';
+import * as projectLockRepository from '../../../src/repositories/project-lock.repository.js';
 import { buildProject, buildUser, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 
 jest.mock('../../../src/db.js', () => ({
@@ -16,6 +17,7 @@ jest.mock('../../../src/db.js', () => ({
 
 jest.mock('../../../src/repositories/audit-log.repository.js');
 jest.mock('../../../src/repositories/budget-alert.repository.js');
+jest.mock('../../../src/repositories/project-lock.repository.js');
 
 const db = prisma as unknown as {
   $transaction: jest.Mock;
@@ -26,6 +28,7 @@ const db = prisma as unknown as {
 
 const audit = jest.mocked(auditLogRepository);
 const alerts = jest.mocked(budgetAlertRepository);
+const locks = jest.mocked(projectLockRepository);
 
 const tx = {
   project: { create: jest.fn(), update: jest.fn(), delete: jest.fn(), findUnique: jest.fn() },
@@ -106,6 +109,16 @@ describe('project.repository', () => {
 
       expect(tx.project.update).toHaveBeenCalledWith({ where: { id: ID }, data: { alert_threshold: 50 } });
       expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, ID);
+    });
+
+    it('locks the project before reading and changing it', async () => {
+      tx.project.findUnique.mockResolvedValue(buildProject());
+      tx.project.update.mockResolvedValue(buildProject());
+
+      await projectRepository.updateProject(ID, 'Bridge Rebuild');
+
+      expect(locks.lockProjects).toHaveBeenCalledWith(tx, ID);
+      expect(locks.lockProjects.mock.invocationCallOrder[0]).toBeLessThan(tx.project.findUnique.mock.invocationCallOrder[0]);
     });
 
     it('records nothing when the update fails', async () => {

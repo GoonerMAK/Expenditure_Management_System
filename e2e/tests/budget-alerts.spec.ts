@@ -117,7 +117,7 @@ test.describe('Notification bell', () => {
     await loginInUi(page, 'contributor');
     await expect(bellButton(page)).toHaveAccessibleName(/unread/);
     const menu = await openBell(page);
-    const item = menu.getByRole('menuitem', { name: `Unread: ${name} has used 75% of its budget, past its 50% alert` });
+    const item = menu.getByRole('menuitem', { name: `Unread: ${name} has used 75% of its budget and reached its 50% alert` });
     await expect(item).toBeVisible();
     await expect(menu).toHaveCSS('opacity', '1');
     await expect(menu).toHaveCSS('transform', 'none');
@@ -149,7 +149,7 @@ test.describe('Notification bell', () => {
     await page.getByRole('button', { name: 'Update' }).click();
 
     const menu = await openBell(page);
-    await expect(menu.getByRole('menuitem', { name: `Unread: ${name} has used 60% of its budget, past its 55% alert` })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: `Unread: ${name} has used 60% of its budget and reached its 55% alert` })).toBeVisible();
     await expect(page.getByText('Alert threshold: 80% → 55%')).toBeVisible();
   });
 

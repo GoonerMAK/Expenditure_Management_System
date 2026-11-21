@@ -2,6 +2,7 @@ import prisma from '../db.js';
 import { AuditAction, AuditEntity, ExpenseStatus, Prisma } from '@prisma/client';
 import { recordAudit } from './audit-log.repository.js';
 import { checkBudgetAlert } from './budget-alert.repository.js';
+import { lockProjects } from './project-lock.repository.js';
 
 type Db = Prisma.TransactionClient;
 
@@ -58,6 +59,7 @@ export const syncMonthIfItHasEntries = async (db: Db, project_id: string, year: 
 
 export const createExpenseEntry = async (data: ExpenseEntryData, created_by_id?: string) => {
     return await prisma.$transaction(async (tx) => {
+        await lockProjects(tx, data.project_id);
         const entry = await tx.expenseEntry.create({ data, include: reviewer });
         const { year, month } = monthOf(entry.date);
         await syncMonthlyExpenditure(tx, entry.project_id, year, month);
@@ -76,6 +78,7 @@ export const updateExpenseEntry = async (
     return await prisma.$transaction(async (tx) => {
         const before = await tx.expenseEntry.findUnique({ where: { id } });
         if (!before) return null;
+        await lockProjects(tx, before.project_id);
 
         const entry = await tx.expenseEntry.update({ where: { id }, data: changes, include: reviewer });
         const after = monthOf(entry.date);
@@ -94,6 +97,7 @@ export const deleteExpenseEntry = async (id: string, deleted_by_id?: string) => 
     return await prisma.$transaction(async (tx) => {
         const entry = await tx.expenseEntry.findUnique({ where: { id } });
         if (!entry) return null;
+        await lockProjects(tx, entry.project_id);
 
         await tx.expenseEntry.delete({ where: { id } });
         const { year, month } = monthOf(entry.date);
