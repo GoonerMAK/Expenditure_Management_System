@@ -8,7 +8,7 @@ jest.mock('../../../src/db.js', () => ({
   default: {
     $transaction: jest.fn(),
     project: { findMany: jest.fn(), count: jest.fn() },
-    financialData: { groupBy: jest.fn() },
+    financialData: { groupBy: jest.fn(), findMany: jest.fn() },
     user: { findMany: jest.fn() },
   },
 }));
@@ -18,7 +18,7 @@ jest.mock('../../../src/repositories/audit-log.repository.js');
 const db = prisma as unknown as {
   $transaction: jest.Mock;
   project: { findMany: jest.Mock; count: jest.Mock };
-  financialData: { groupBy: jest.Mock };
+  financialData: { groupBy: jest.Mock; findMany: jest.Mock };
   user: { findMany: jest.Mock };
 };
 
@@ -259,6 +259,20 @@ describe('project.repository', () => {
       expect(db.user.findMany).toHaveBeenCalledWith({
         where: { projects: { some: {} } },
         select: { id: true, username: true, name: true, email: true },
+      });
+    });
+  });
+
+  describe('getCategoryFinancialData', () => {
+    it.each([['c1'], [null]])('reads the financial data of every project in category %p by date', async (category_id) => {
+      const entries = [{ year: 2026, month: 1, expenditure: 10, initial_budget: 100, revised_budget: null }];
+      db.financialData.findMany.mockResolvedValue(entries);
+
+      await expect(projectRepository.getCategoryFinancialData(category_id)).resolves.toEqual(entries);
+      expect(db.financialData.findMany).toHaveBeenCalledWith({
+        where: { project: { category_id } },
+        select: { year: true, month: true, expenditure: true, initial_budget: true, revised_budget: true },
+        orderBy: [{ year: 'asc' }, { month: 'asc' }],
       });
     });
   });

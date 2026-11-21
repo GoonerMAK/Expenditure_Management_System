@@ -42,7 +42,7 @@ export const openLastProjectsPage = async (page: Page, api: APIRequestContext) =
 };
 
 export const selectTrendProject = async (page: Page, name: string) => {
-  await page.getByLabel('Project').click();
+  await page.getByLabel('Project', { exact: true }).click();
   await page.getByRole('option', { name, exact: true }).click();
 };
 

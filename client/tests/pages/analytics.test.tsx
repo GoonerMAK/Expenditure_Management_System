@@ -81,6 +81,16 @@ describe('Analytics page', () => {
     expect(screen.getByRole('table')).toHaveTextContent('Mar 20261,0001,200');
   });
 
+  it('offers report export for the listed projects and categories', async () => {
+    const user = userEvent.setup();
+    render(<Analytics />);
+
+    expect(screen.getByLabelText('Which project')).toHaveTextContent('Bridge');
+    await user.click(screen.getByLabelText('Report for'));
+    await user.click(screen.getByRole('option', { name: 'Category' }));
+    expect(screen.getByLabelText('Which category')).toHaveTextContent('Roads');
+  });
+
   it('switches to the yearly view', async () => {
     const user = userEvent.setup();
     render(<Analytics />);
