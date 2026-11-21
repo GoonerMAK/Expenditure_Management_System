@@ -135,8 +135,9 @@ describe('NotificationBell', () => {
 
     await openMenu();
 
-    expect(await screen.findByRole('menuitem', { name: /Bridge Renovation has used 85% of its budget, past its 80% alert/ }))
-      .toHaveTextContent('12 Mar 2026');
+    const item = await screen.findByRole('menuitem', { name: /Bridge Renovation has used 85% of its budget, past its 80% alert/ });
+    expect(item).toHaveTextContent('12 Mar 2026');
+    expect(item.querySelector('time')).toHaveAttribute('dateTime', '2026-03-12T10:30:00.000Z');
   });
 
   it('describes a project that went over budget', async () => {

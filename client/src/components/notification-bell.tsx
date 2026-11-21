@@ -1,7 +1,7 @@
 import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Notification } from './interfaces';
-import { cn, formatAmount, formatDay } from '../lib/utils';
+import { cn, formatAmount, formatTime } from '../lib/utils';
 import { useGetNotificationsQuery, useMarkAllNotificationsReadMutation, useMarkNotificationReadMutation } from '../redux/notification-api';
 
 import ErrorState from './error-state';
@@ -37,7 +37,9 @@ const NotificationItem = ({ notification, onOpen }: NotificationItemProps) => {
         {unread && <span className="sr-only">Unread: </span>}
         {describeNotification(notification)}
       </span>
-      <span className="text-xs text-muted-foreground">{formatDay(notification.created_at)}</span>
+      <time dateTime={notification.created_at} className="text-xs text-muted-foreground">
+        {formatTime(notification.created_at)}
+      </time>
     </DropdownMenuItem>
   );
 };
@@ -91,7 +93,7 @@ const NotificationBell = () => {
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel>Notifications</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {renderList()}
+        <div className="max-h-96 overflow-y-auto">{renderList()}</div>
         {unreadCount > 0 && (
           <>
             <DropdownMenuSeparator />

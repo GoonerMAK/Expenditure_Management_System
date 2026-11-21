@@ -1,5 +1,5 @@
 import { HistoryAction, HistoryChange, HistoryEntry, HistoryValue } from './interfaces';
-import { formatAmount, formatDay, formatMonth } from '../lib/utils';
+import { formatAmount, formatDay, formatMonth, formatTime } from '../lib/utils';
 import { useGetProjectHistoryQuery } from '../redux/financial-data-api';
 
 import ErrorState from './error-state';
@@ -65,9 +65,6 @@ const describeSubject = (entry: HistoryEntry) => {
 
 const describeChange = ({ field, from, to }: HistoryChange) =>
   `${FIELD_LABELS[field] ?? field}: ${formatValue(field, from)} → ${formatValue(field, to)}`;
-
-const formatTime = (date: string) =>
-  new Date(date).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 const HistoryItem = ({ entry }: { entry: HistoryEntry }) => (
   <li className="flex flex-col gap-1 border-b pb-3 last:border-b-0 last:pb-0">
