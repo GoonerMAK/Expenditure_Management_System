@@ -56,7 +56,7 @@ describe('report.service', () => {
         ],
         total: totals(2700, 1650, 61.1),
       });
-      expect(projects.getProjectFinancialData).toHaveBeenCalledWith(ID);
+      expect(projects.getProjectFinancialData).toHaveBeenCalledWith(ID, undefined);
     });
 
     it('builds one row per year', async () => {
@@ -68,9 +68,12 @@ describe('report.service', () => {
       ]);
     });
 
-    it('keeps only the chosen year in the rows and the total', async () => {
+    it('loads only the chosen year and reports it in the rows and the total', async () => {
+      projects.getProjectFinancialData.mockResolvedValue(ENTRIES.filter((entry) => entry.year === 2026));
+
       const report = await reportService.getProjectReport(ID, { period: 'monthly', year: 2026 });
 
+      expect(projects.getProjectFinancialData).toHaveBeenCalledWith(ID, 2026);
       expect(report?.year).toBe(2026);
       expect(report?.rows.map((row) => row.period)).toEqual(['2026-01', '2026-03']);
       expect(report?.total).toEqual(totals(2200, 1550, 70.5));
@@ -104,12 +107,12 @@ describe('report.service', () => {
   describe('getCategoryReport', () => {
     it('builds the report from the financial data of every project in the category', async () => {
       categories.getCategoryById.mockResolvedValue(buildCategory({ category_name: 'Roads' }));
-      projects.getCategoryFinancialData.mockResolvedValue(ENTRIES);
+      projects.getCategoryFinancialData.mockResolvedValue(ENTRIES.filter((entry) => entry.year === 2025));
 
       const report = await reportService.getCategoryReport(ID, { period: 'yearly', year: 2025 });
 
       expect(categories.getCategoryById).toHaveBeenCalledWith(ID);
-      expect(projects.getCategoryFinancialData).toHaveBeenCalledWith(ID);
+      expect(projects.getCategoryFinancialData).toHaveBeenCalledWith(ID, 2025);
       expect(report).toEqual({
         subject: 'Category',
         name: 'Roads',
@@ -126,7 +129,7 @@ describe('report.service', () => {
       const report = await reportService.getCategoryReport('uncategorised', { period: 'monthly' });
 
       expect(categories.getCategoryById).not.toHaveBeenCalled();
-      expect(projects.getCategoryFinancialData).toHaveBeenCalledWith(null);
+      expect(projects.getCategoryFinancialData).toHaveBeenCalledWith(null, undefined);
       expect(report?.name).toBe('Uncategorised');
     });
 

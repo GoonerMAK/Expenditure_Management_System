@@ -1,3 +1,4 @@
+import path from 'path';
 import PDFDocument from 'pdfkit';
 import { Report, ReportRow } from './report.service.js';
 import { ReportFormat } from '../validators/report.validator.js';
@@ -7,9 +8,10 @@ type ReportTotals = Report['total'];
 const PAGE_MARGIN = 50;
 const ROW_HEIGHT = 20;
 const TABLE_WIDTH = 495;
-const BODY_FONT = 'Helvetica';
-const BOLD_FONT = 'Helvetica-Bold';
-const FORMULA_STARTS = ['=', '+', '-', '@'];
+const FONT_DIR = path.resolve('assets', 'fonts');
+const BODY_FONT = 'Body';
+const BOLD_FONT = 'Bold';
+const FORMULA_STARTS = ['=', '+', '-', '@', '\t', '\r'];
 
 const COLUMNS = [
     { title: 'Period', x: 0, width: 115, align: 'left' },
@@ -106,12 +108,18 @@ const drawTable = (doc: PDFKit.PDFDocument, rows: ReportRow[], total: ReportTota
 
 const toReportTitle = (report: Report) => `${report.subject} report: ${report.name}`;
 
+const registerFonts = (doc: PDFKit.PDFDocument) => {
+    doc.registerFont(BODY_FONT, path.join(FONT_DIR, 'HindSiliguri-Regular.ttf'));
+    doc.registerFont(BOLD_FONT, path.join(FONT_DIR, 'HindSiliguri-Bold.ttf'));
+};
+
 export const toPdf = (report: Report) => new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: PAGE_MARGIN, info: { Title: toReportTitle(report) } });
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+    registerFonts(doc);
 
     doc.font(BOLD_FONT).fontSize(16).text(toReportTitle(report));
     doc.font(BODY_FONT).fontSize(10).fillColor('#555555').text(`${formatPeriodType(report)}, ${formatYear(report)}`);
