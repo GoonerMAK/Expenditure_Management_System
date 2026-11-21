@@ -5,16 +5,19 @@ import { Report } from '../services/report.service.js';
 import { ProjectParams } from '../validators/project.validator.js';
 import { CategoryReportParams, ReportFormat, ReportQuery } from '../validators/report.validator.js';
 
+const CONTENT_TYPES: Record<ReportFormat, string> = {
+    csv: 'text/csv',
+    pdf: 'application/pdf',
+};
+
+const buildFile = async (report: Report, format: ReportFormat) =>
+    format === 'pdf' ? await reportFileService.toPdf(report) : reportFileService.toCsv(report);
+
 const sendReport = async (res: Response, report: Report, format: ReportFormat) => {
+    const file = await buildFile(report, format);
     res.setHeader('Content-Disposition', `attachment; filename="${reportFileService.toReportFileName(report, format)}"`);
-    if (format === 'pdf') {
-        const pdf = await reportFileService.toPdf(report);
-        res.type('application/pdf');
-        res.status(200).send(pdf);
-    } else {
-        res.type('text/csv');
-        res.status(200).send(reportFileService.toCsv(report));
-    }
+    res.type(CONTENT_TYPES[format]);
+    res.status(200).send(file);
 };
 
 export const exportProjectReport = async (req: Request<ProjectParams, unknown, unknown, ReportQuery>, res: Response) => {

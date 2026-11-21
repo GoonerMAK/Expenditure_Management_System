@@ -105,6 +105,7 @@ describe('report.controller', () => {
 
       expectResponse(res, 500, { error: 'pdf failed' });
       expect(res.send).not.toHaveBeenCalled();
+      expect(res.setHeader).not.toHaveBeenCalled();
     });
   });
 });
