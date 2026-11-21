@@ -7,6 +7,7 @@ import useAuth from '../../src/lib/use-auth';
 
 jest.mock('axios');
 jest.mock('../../src/lib/use-auth');
+jest.mock('../../src/components/notification-bell', () => () => <p>Notification bell</p>);
 
 const mockedPost = jest.mocked(axios.post);
 const mockedUseAuth = jest.mocked(useAuth);
@@ -36,6 +37,12 @@ describe('Header', () => {
     renderHeader();
 
     expect(screen.getByText('Welcome jdoe')).toBeInTheDocument();
+  });
+
+  it('shows the notification bell next to the account menu', () => {
+    renderHeader();
+
+    expect(screen.getByText('Notification bell')).toBeInTheDocument();
   });
 
   it('renders a bare greeting while the user is unknown', () => {

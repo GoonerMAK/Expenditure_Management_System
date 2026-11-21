@@ -3,6 +3,7 @@
  */
 import { categoryApi } from '../../src/redux/category-api';
 import { financialDataApi, getReceiptUrl } from '../../src/redux/financial-data-api';
+import { notificationApi } from '../../src/redux/notification-api';
 import { projectApi, toProjectListQuery } from '../../src/redux/project-api';
 import { roleApi } from '../../src/redux/role-api';
 import { userApi } from '../../src/redux/user-api';
@@ -503,6 +504,51 @@ describe('RTK Query APIs', () => {
       expect(requests[0]).toEqual(
         expect.objectContaining({ url: `${BASE}financialData/f1`, method: 'PUT', body: { month: 4 } }),
       );
+    });
+  });
+
+  describe('notificationApi', () => {
+    it('lists the notifications of the signed-in user', async () => {
+      const { requests } = mockServer(() => ({ body: { data: [], unread_count: 0 } }));
+      const store = makeStore();
+
+      const result = await store.dispatch(notificationApi.endpoints.getNotifications.initiate());
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}notifications`, method: 'GET', credentials: 'include' }));
+      expect(result.data).toEqual({ data: [], unread_count: 0 });
+    });
+
+    it('marks one notification as read with a POST', async () => {
+      const { requests } = mockServer(() => ({ body: {} }));
+      const store = makeStore();
+
+      await store.dispatch(notificationApi.endpoints.markNotificationRead.initiate('n1'));
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}notifications/n1/read`, method: 'POST' }));
+    });
+
+    it('marks every notification as read with a POST', async () => {
+      const { requests } = mockServer(() => ({ body: { count: 2 } }));
+      const store = makeStore();
+
+      await store.dispatch(notificationApi.endpoints.markAllNotificationsRead.initiate());
+
+      expect(requests[0]).toEqual(expect.objectContaining({ url: `${BASE}notifications/read-all`, method: 'POST' }));
+    });
+
+    it.each([
+      ['one notification', () => notificationApi.endpoints.markNotificationRead.initiate('n1')],
+      ['every notification', () => notificationApi.endpoints.markAllNotificationsRead.initiate()],
+    ])('refetches the list after %s is marked as read', async (_name, markRead) => {
+      const { requests } = mockServer(() => ({ body: { data: [], unread_count: 0 } }));
+      const store = makeStore();
+      store.dispatch(notificationApi.endpoints.getNotifications.initiate());
+      await flush();
+
+      await store.dispatch(markRead() as never);
+      await flush();
+
+      expect(urlsFor(requests, 'notifications')).toHaveLength(2);
     });
   });
 

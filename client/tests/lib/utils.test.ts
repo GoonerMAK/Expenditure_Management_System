@@ -1,4 +1,4 @@
-import { cn, formatAmount, formatDate, formatDay, formatMonth, getYearMonth, formatPercent, getServerMessage, toOptionalAmount } from '../../src/lib/utils';
+import { cn, formatAmount, formatDate, formatDay, formatMonth, formatTime, getYearMonth, formatPercent, getServerMessage, toOptionalAmount } from '../../src/lib/utils';
 
 describe('cn', () => {
   it('joins class names', () => {
@@ -90,6 +90,15 @@ describe('formatDay', () => {
   it('formats a UTC midnight date without shifting the day', () => {
     expect(formatDay('2026-03-01T00:00:00.000Z')).toBe('1 Mar 2026');
     expect(formatDay(new Date('2025-12-31T00:00:00.000Z'))).toBe('31 Dec 2025');
+  });
+});
+
+describe('formatTime', () => {
+  it('formats a timestamp in local time with the day and the time', () => {
+    const timestamp = '2026-03-12T10:30:00.000Z';
+    const expected = new Date(timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    expect(formatTime(timestamp)).toBe(expected);
+    expect(formatTime(timestamp)).toContain('12 Mar 2026');
   });
 });
 

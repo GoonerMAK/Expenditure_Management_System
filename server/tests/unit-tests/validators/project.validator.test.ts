@@ -88,4 +88,30 @@ describe('project.validator projectSchema', () => {
       expect(projectSchema.parse({ project_name: 'Bridge', created_by_id: OTHER_ID })).not.toHaveProperty('created_by_id');
     });
   });
+
+  describe('alert_threshold', () => {
+    it('is optional so the project keeps its saved threshold', () => {
+      expect(projectSchema.parse({ project_name: 'Bridge' })).not.toHaveProperty('alert_threshold');
+    });
+
+    it.each([1, 80, 100])('accepts %s percent', (alert_threshold) => {
+      expect(projectSchema.parse({ project_name: 'Bridge', alert_threshold }).alert_threshold).toBe(alert_threshold);
+    });
+
+    it('accepts a number sent as text', () => {
+      expect(projectSchema.parse({ project_name: 'Bridge', alert_threshold: '75' }).alert_threshold).toBe(75);
+    });
+
+    it.each([0, 101, -5])('rejects %s percent', (alert_threshold) => {
+      expect(issue({ project_name: 'Bridge', alert_threshold })?.message).toBe('Alert threshold must be between 1 and 100');
+    });
+
+    it('rejects a fraction', () => {
+      expect(issue({ project_name: 'Bridge', alert_threshold: 80.5 })?.message).toBe('Alert threshold must be a whole number');
+    });
+
+    it('rejects text that is not a number', () => {
+      expect(issue({ project_name: 'Bridge', alert_threshold: 'high' })?.message).toBe('Alert threshold must be a number');
+    });
+  });
 });

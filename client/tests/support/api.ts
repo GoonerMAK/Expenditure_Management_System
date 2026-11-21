@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { categoryApi } from '../../src/redux/category-api';
 import { financialDataApi } from '../../src/redux/financial-data-api';
+import { notificationApi } from '../../src/redux/notification-api';
 import { projectApi } from '../../src/redux/project-api';
 import { roleApi } from '../../src/redux/role-api';
 import { userApi } from '../../src/redux/user-api';
@@ -9,13 +10,14 @@ export const BASE = 'http://localhost:4000/api/';
 
 export type RecordedRequest = { url: string; method: string; credentials: string; body: unknown };
 
-const apis = [categoryApi, financialDataApi, projectApi, roleApi, userApi] as const;
+const apis = [categoryApi, financialDataApi, notificationApi, projectApi, roleApi, userApi] as const;
 
 export const makeStore = () =>
   configureStore({
     reducer: {
       [categoryApi.reducerPath]: categoryApi.reducer,
       [financialDataApi.reducerPath]: financialDataApi.reducer,
+      [notificationApi.reducerPath]: notificationApi.reducer,
       [projectApi.reducerPath]: projectApi.reducer,
       [roleApi.reducerPath]: roleApi.reducer,
       [userApi.reducerPath]: userApi.reducer,

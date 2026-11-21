@@ -1,6 +1,7 @@
 import prisma from '../../../src/db.js';
 import * as projectRepository from '../../../src/repositories/project.repository.js';
 import * as auditLogRepository from '../../../src/repositories/audit-log.repository.js';
+import * as budgetAlertRepository from '../../../src/repositories/budget-alert.repository.js';
 import { buildProject, buildUser, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 
 jest.mock('../../../src/db.js', () => ({
@@ -14,6 +15,7 @@ jest.mock('../../../src/db.js', () => ({
 }));
 
 jest.mock('../../../src/repositories/audit-log.repository.js');
+jest.mock('../../../src/repositories/budget-alert.repository.js');
 
 const db = prisma as unknown as {
   $transaction: jest.Mock;
@@ -23,6 +25,7 @@ const db = prisma as unknown as {
 };
 
 const audit = jest.mocked(auditLogRepository);
+const alerts = jest.mocked(budgetAlertRepository);
 
 const tx = {
   project: { create: jest.fn(), update: jest.fn(), delete: jest.fn(), findUnique: jest.fn() },
@@ -66,6 +69,16 @@ describe('project.repository', () => {
       expect(db.$transaction).toHaveBeenCalledTimes(1);
       expect(audit.recordAudit).toHaveBeenCalledWith(tx, 'Project', 'Created', USER_ID, null, project);
     });
+
+    it('saves the alert threshold when one is given', async () => {
+      tx.project.create.mockResolvedValue(buildProject({ alert_threshold: 90 }));
+
+      await projectRepository.createProject('Bridge Renovation', undefined, OTHER_ID, 'Infrastructure', undefined, undefined, USER_ID, 90);
+
+      expect(tx.project.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ alert_threshold: 90 }),
+      }));
+    });
   });
 
   describe('updateProject', () => {
@@ -80,6 +93,19 @@ describe('project.repository', () => {
 
       expect(tx.project.update).toHaveBeenCalledWith({ where: { id: ID }, data: { project_name: 'Bridge Rebuild' } });
       expect(audit.recordAudit).toHaveBeenCalledWith(tx, 'Project', 'Updated', USER_ID, before, after);
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, ID);
+    });
+
+    it('changes the alert threshold and checks the budget alert against it', async () => {
+      const before = buildProject();
+      const after = buildProject({ alert_threshold: 50 });
+      tx.project.findUnique.mockResolvedValue(before);
+      tx.project.update.mockResolvedValue(after);
+
+      await projectRepository.updateProject(ID, undefined, undefined, undefined, undefined, undefined, undefined, undefined, USER_ID, 50);
+
+      expect(tx.project.update).toHaveBeenCalledWith({ where: { id: ID }, data: { alert_threshold: 50 } });
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, ID);
     });
 
     it('records nothing when the update fails', async () => {
@@ -89,6 +115,7 @@ describe('project.repository', () => {
       await expect(projectRepository.updateProject(ID, 'Bridge Rebuild')).rejects.toThrow('Record to update not found');
 
       expect(audit.recordAudit).not.toHaveBeenCalled();
+      expect(alerts.checkBudgetAlert).not.toHaveBeenCalled();
     });
   });
 

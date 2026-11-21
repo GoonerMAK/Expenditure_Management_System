@@ -6,6 +6,7 @@ import useAuth from '../lib/use-auth';
 
 import { Check, ChevronsUpDown, CalendarIcon } from "lucide-react"
 import { cn, getYearMonth, toOptionalAmount } from '../lib/utils';
+import { alertThresholdRules, DEFAULT_ALERT_THRESHOLD } from '../lib/alert-threshold';
 import { Button } from "../components/ui/button";
 import { Calendar } from './ui/calendar';
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ interface Project {
     category_name: string;
     start_date: string;
     end_date: string;
+    alert_threshold: number;
     created_by_id?: string;
     created_at?: string;
     updated_at?: string;
@@ -75,6 +77,7 @@ const SingleProject = () => {
             category_name: '',
             start_date: '',
             end_date: '',
+            alert_threshold: DEFAULT_ALERT_THRESHOLD,
 
             year: 0,
             month: 0,
@@ -97,6 +100,7 @@ const SingleProject = () => {
                 category_name: project.category_name,
                 start_date: toFormDate(project.start_date),
                 end_date: toFormDate(project.end_date),
+                alert_threshold: project.alert_threshold,
             });
         }
     }, [project, getValues, reset]);
@@ -129,6 +133,7 @@ const SingleProject = () => {
             category_name: data.category_id ? data.category_name : undefined,
             start_date: data.start_date || undefined,
             end_date: data.end_date || undefined,
+            alert_threshold: Number(data.alert_threshold),
         };
     
         const financialData: Partial<FinancialDataPayload> = {
@@ -365,6 +370,24 @@ const SingleProject = () => {
                                         Presumed date when the project will be finished
                                     </FormDescription>
                                     <br></br>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="alert_threshold"
+                            rules={alertThresholdRules}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Budget Alert Threshold (%)</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" {...field} disabled={!editMode} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Notify when spending reaches this share of the budget
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

@@ -2,6 +2,7 @@ import prisma from '../db.js';
 import { AuditAction, AuditEntity, FinancialData } from '@prisma/client';
 import { syncMonthIfItHasEntries } from './expense-entry.repository.js';
 import { recordAudit } from './audit-log.repository.js';
+import { checkBudgetAlert } from './budget-alert.repository.js';
 
 export const createFinancialData = async (
     year: number,
@@ -32,6 +33,7 @@ export const createFinancialData = async (
         await syncMonthIfItHasEntries(tx, created.project_id, created.year, created.month);
         const saved = await tx.financialData.findUniqueOrThrow({ where: { id: created.id } });
         await recordAudit(tx, AuditEntity.Budget, AuditAction.Created, created_by_id, null, saved);
+        await checkBudgetAlert(tx, saved.project_id);
         return saved;
     });
 };
@@ -70,6 +72,8 @@ export const updateFinancialData = async (
         await syncMonthIfItHasEntries(tx, financialData.project_id, financialData.year, financialData.month);
         const saved = await tx.financialData.findUniqueOrThrow({ where: { id: updated.id } });
         await recordAudit(tx, AuditEntity.Budget, AuditAction.Updated, changed_by_id, financialData, saved);
+        await checkBudgetAlert(tx, saved.project_id);
+        if (financialData.project_id !== saved.project_id) await checkBudgetAlert(tx, financialData.project_id);
         return saved;
     });
 };
@@ -80,6 +84,7 @@ export const deleteFinancialData = async (id: string, deleted_by_id?: string) =>
             where: { id },
         });
         await recordAudit(tx, AuditEntity.Budget, AuditAction.Deleted, deleted_by_id, deleted, null);
+        await checkBudgetAlert(tx, deleted.project_id);
         return deleted;
     });
 };

@@ -14,7 +14,7 @@ export type AuditChange = {
 };
 
 const TRACKED_FIELDS: Record<AuditEntity, string[]> = {
-    Project: ['project_name', 'description', 'category_name', 'start_date', 'end_date'],
+    Project: ['project_name', 'description', 'category_name', 'start_date', 'end_date', 'alert_threshold'],
     Budget: ['year', 'month', 'initial_budget', 'revised_budget', 'expenditure'],
     Expense: ['date', 'vendor', 'amount', 'notes', 'receipt_name', 'status', 'rejection_reason'],
 };

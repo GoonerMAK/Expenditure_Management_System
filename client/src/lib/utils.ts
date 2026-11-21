@@ -17,6 +17,9 @@ export const getYearMonth = (date: string | Date) => {
   return { year: day.getUTCFullYear(), month: day.getUTCMonth() + 1 }
 }
 
+export const formatTime = (date: string) =>
+  new Date(date).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
 export const formatDay = (date: string | Date) =>
   new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 

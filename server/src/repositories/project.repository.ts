@@ -2,6 +2,7 @@ import prisma from '../db.js';
 import { AuditAction, AuditEntity, Prisma, Project } from '@prisma/client';
 import { ProjectListFilters, ProjectSort } from '../validators/project.validator.js';
 import { recordAudit } from './audit-log.repository.js';
+import { checkBudgetAlert } from './budget-alert.repository.js';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -52,7 +53,8 @@ export const createProject = async (
     category_name?: string,
     start_date?: Date,
     end_date?: Date,
-    created_by_id?: string
+    created_by_id?: string,
+    alert_threshold?: number
 ) => {
     return await prisma.$transaction(async (tx) => {
         const project = await tx.project.create({
@@ -62,6 +64,7 @@ export const createProject = async (
                 start_date,
                 end_date,
                 category_name,
+                alert_threshold,
                 created_by:{
                     connect:{
                         id:created_by_id
@@ -88,7 +91,8 @@ export const updateProject = async (
     start_date?: Date,
     end_date?: Date,
     created_by_id?: string,
-    changed_by_id?: string
+    changed_by_id?: string,
+    alert_threshold?: number
 ) => {
     const data: any = {};
     if (project_name !== undefined) data.project_name = project_name;
@@ -98,6 +102,7 @@ export const updateProject = async (
     if (start_date !== undefined) data.start_date = start_date;
     if (end_date !== undefined) data.end_date = end_date;
     if (created_by_id !== undefined) data.created_by_id = created_by_id;
+    if (alert_threshold !== undefined) data.alert_threshold = alert_threshold;
 
     return await prisma.$transaction(async (tx) => {
         const before = await tx.project.findUnique({ where: { id } });
@@ -106,6 +111,7 @@ export const updateProject = async (
             data,
         });
         await recordAudit(tx, AuditEntity.Project, AuditAction.Updated, changed_by_id, before, project);
+        await checkBudgetAlert(tx, id);
         return project;
     });
 };

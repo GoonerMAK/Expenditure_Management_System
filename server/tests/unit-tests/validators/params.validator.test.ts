@@ -1,5 +1,6 @@
 import { categoryParamsSchema } from '../../../src/validators/category.validator.js';
 import { financialDataParamsSchema } from '../../../src/validators/financial-data.validator.js';
+import { notificationParamsSchema } from '../../../src/validators/notification.validator.js';
 import { permissionParamsSchema } from '../../../src/validators/permission.validator.js';
 import { projectParamsSchema } from '../../../src/validators/project.validator.js';
 import { roleParamsSchema } from '../../../src/validators/role.validator.js';
@@ -9,6 +10,7 @@ import { ID } from '../helpers/factories.js';
 const schemas = [
   ['categoryParamsSchema', categoryParamsSchema],
   ['financialDataParamsSchema', financialDataParamsSchema],
+  ['notificationParamsSchema', notificationParamsSchema],
   ['permissionParamsSchema', permissionParamsSchema],
   ['projectParamsSchema', projectParamsSchema],
   ['roleParamsSchema', roleParamsSchema],

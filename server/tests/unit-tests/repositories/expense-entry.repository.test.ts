@@ -1,11 +1,16 @@
 import prisma from '../../../src/db.js';
 import * as expenseEntryRepository from '../../../src/repositories/expense-entry.repository.js';
+import * as budgetAlertRepository from '../../../src/repositories/budget-alert.repository.js';
 import { buildExpenseEntry, buildProject, ID, OTHER_ID, USER_ID } from '../helpers/factories.js';
 
 jest.mock('../../../src/db.js', () => ({
   __esModule: true,
   default: { $transaction: jest.fn(), expenseEntry: { findMany: jest.fn() } },
 }));
+
+jest.mock('../../../src/repositories/budget-alert.repository.js');
+
+const alerts = jest.mocked(budgetAlertRepository);
 
 const db = prisma as unknown as {
   $transaction: jest.Mock;
@@ -130,6 +135,7 @@ describe('expense-entry.repository', () => {
       expect(tx.expenseEntry.create).toHaveBeenCalledWith({ data, include: reviewer });
       expect(tx.expenseEntry.aggregate).toHaveBeenCalledWith(sumQuery(march));
       expect(tx.financialData.updateMany).toHaveBeenCalledWith(monthUpdate(3, 0));
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, OTHER_ID);
     });
 
     it('records who created the entry in the same transaction', async () => {
@@ -163,6 +169,7 @@ describe('expense-entry.repository', () => {
       expect(tx.expenseEntry.update).toHaveBeenCalledWith({ where: { id: ID }, data: review, include: reviewer });
       expect(tx.expenseEntry.aggregate).toHaveBeenCalledTimes(1);
       expect(tx.financialData.updateMany).toHaveBeenCalledWith(monthUpdate(3, 250.75));
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, OTHER_ID);
     });
 
     it('records an approval as its own action with the status change', async () => {
@@ -232,6 +239,7 @@ describe('expense-entry.repository', () => {
       expect(tx.expenseEntry.update).not.toHaveBeenCalled();
       expect(tx.financialData.updateMany).not.toHaveBeenCalled();
       expect(tx.auditLog.create).not.toHaveBeenCalled();
+      expect(alerts.checkBudgetAlert).not.toHaveBeenCalled();
     });
   });
 
@@ -245,6 +253,7 @@ describe('expense-entry.repository', () => {
 
       expect(tx.expenseEntry.delete).toHaveBeenCalledWith({ where: { id: ID } });
       expect(tx.financialData.updateMany).toHaveBeenCalledWith(monthUpdate(3, 0));
+      expect(alerts.checkBudgetAlert).toHaveBeenCalledWith(tx, OTHER_ID);
     });
 
     it('records who deleted the entry and what it held', async () => {

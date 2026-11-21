@@ -91,6 +91,12 @@ describe('ProjectHistory', () => {
     expect(list.getByText('Initial budget: 10,000 → 12,500.5')).toBeInTheDocument();
   });
 
+  it('shows the budget alert threshold as a percentage', () => {
+    const list = showHistory([historyEntry({ changes: [{ field: 'alert_threshold', from: 80, to: 90 }] })]);
+
+    expect(list.getByText('Alert threshold: 80% → 90%')).toBeInTheDocument();
+  });
+
   it('shows an approval as its own action', () => {
     const list = showHistory([
       historyEntry({

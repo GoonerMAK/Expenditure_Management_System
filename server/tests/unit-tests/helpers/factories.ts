@@ -1,4 +1,4 @@
-import type { Category, ExpenseEntry, FinancialData, Permission, Project, Role, User } from '@prisma/client';
+import type { Category, ExpenseEntry, FinancialData, Notification, Permission, Project, Role, User } from '@prisma/client';
 
 export const ID = '3f1c2a4e-8b7d-4c6a-9e2f-1a2b3c4d5e6f';
 export const OTHER_ID = '7a9b8c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
@@ -58,8 +58,25 @@ export const buildProject = (overrides: Partial<Project> = {}): Project => ({
   start_date: new Date('2026-02-01T00:00:00.000Z'),
   end_date: new Date('2026-12-31T00:00:00.000Z'),
   created_by_id: OTHER_ID,
+  alert_threshold: 80,
+  budget_alert_level: null,
   created_at: NOW,
   updated_at: NOW,
+  ...overrides,
+});
+
+export const buildNotification = (overrides: Partial<Notification> = {}): Notification => ({
+  id: ID,
+  user_id: USER_ID,
+  project_id: OTHER_ID,
+  project_name: 'Bridge Renovation',
+  level: 'Threshold',
+  threshold: 80,
+  budget: 12000,
+  spent: 10200,
+  percent_used: 85,
+  read_at: null,
+  created_at: NOW,
   ...overrides,
 });
 

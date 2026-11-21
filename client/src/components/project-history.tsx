@@ -1,5 +1,5 @@
 import { HistoryAction, HistoryChange, HistoryEntry, HistoryValue } from './interfaces';
-import { formatAmount, formatDay, formatMonth } from '../lib/utils';
+import { formatAmount, formatDay, formatMonth, formatTime } from '../lib/utils';
 import { useGetProjectHistoryQuery } from '../redux/financial-data-api';
 
 import ErrorState from './error-state';
@@ -15,6 +15,7 @@ const FIELD_LABELS: Record<string, string> = {
   category_name: 'Category',
   start_date: 'Start date',
   end_date: 'End date',
+  alert_threshold: 'Alert threshold',
   year: 'Year',
   month: 'Month',
   initial_budget: 'Initial budget',
@@ -33,6 +34,8 @@ const DATE_FIELDS = ['start_date', 'end_date', 'date'];
 
 const AMOUNT_FIELDS = ['initial_budget', 'revised_budget', 'expenditure', 'amount'];
 
+const PERCENT_FIELDS = ['alert_threshold'];
+
 const ACTION_VERBS: Record<HistoryAction, string> = {
   Created: 'added',
   Updated: 'changed',
@@ -45,6 +48,7 @@ const formatValue = (field: string, value: HistoryValue) => {
   if (value === null || value === '') return 'empty';
   if (DATE_FIELDS.includes(field)) return formatDay(String(value));
   if (AMOUNT_FIELDS.includes(field) && typeof value === 'number') return formatAmount(value);
+  if (PERCENT_FIELDS.includes(field)) return `${value}%`;
   return String(value);
 };
 
@@ -61,9 +65,6 @@ const describeSubject = (entry: HistoryEntry) => {
 
 const describeChange = ({ field, from, to }: HistoryChange) =>
   `${FIELD_LABELS[field] ?? field}: ${formatValue(field, from)} → ${formatValue(field, to)}`;
-
-const formatTime = (date: string) =>
-  new Date(date).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 const HistoryItem = ({ entry }: { entry: HistoryEntry }) => (
   <li className="flex flex-col gap-1 border-b pb-3 last:border-b-0 last:pb-0">

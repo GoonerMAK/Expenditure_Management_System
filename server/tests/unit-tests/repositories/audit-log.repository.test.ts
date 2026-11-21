@@ -26,6 +26,15 @@ describe('audit-log.repository', () => {
       ]);
     });
 
+    it('records a change to the alert threshold but not the saved alert level', () => {
+      const before = buildProject();
+      const after = buildProject({ alert_threshold: 90, budget_alert_level: 'Threshold' });
+
+      expect(auditLogRepository.listChanges('Project', before, after)).toEqual([
+        { field: 'alert_threshold', from: 80, to: 90 },
+      ]);
+    });
+
     it('stores dates as ISO strings so equal dates are not reported', () => {
       const before = buildProject();
       const after = buildProject({ end_date: new Date('2027-01-31T00:00:00.000Z') });

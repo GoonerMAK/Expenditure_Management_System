@@ -54,6 +54,7 @@ const project = {
   category_name: 'Infrastructure',
   start_date: '2026-02-01T12:00:00.000Z',
   end_date: '2026-12-31T12:00:00.000Z',
+  alert_threshold: 75,
 };
 
 const financialData = { year: 2026, month: 3, expenditure: 1500.5, initial_budget: 10000, revised_budget: 12000 };
@@ -195,6 +196,42 @@ describe('SingleProject (single project card)', () => {
       id: 'p1',
       data: { year: 2026, month: 4, expenditure: 2000.25, initial_budget: 10000, revised_budget: 12000 },
     });
+  });
+
+  it('shows the saved budget alert threshold of the project', async () => {
+    setup();
+
+    await waitFor(() => expect(screen.getByLabelText('Budget Alert Threshold (%)')).toHaveValue(75));
+    expect(screen.getByLabelText('Budget Alert Threshold (%)')).toBeDisabled();
+  });
+
+  it('saves a changed budget alert threshold as a number', async () => {
+    const { updateProject, user } = setup();
+    await waitFor(() => expect(screen.getByLabelText('Budget Alert Threshold (%)')).toHaveValue(75));
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.clear(screen.getByLabelText('Budget Alert Threshold (%)'));
+    await user.type(screen.getByLabelText('Budget Alert Threshold (%)'), '95');
+    await user.click(screen.getByRole('button', { name: 'Update' }));
+
+    await waitFor(() => expect(updateProject).toHaveBeenCalledWith({
+      id: 'p1',
+      data: expect.objectContaining({ alert_threshold: 95 }),
+    }));
+  });
+
+  it('does not save a budget alert threshold above 100', async () => {
+    const { updateProject, updateFinancial, user } = setup();
+    await waitFor(() => expect(screen.getByLabelText('Budget Alert Threshold (%)')).toHaveValue(75));
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.clear(screen.getByLabelText('Budget Alert Threshold (%)'));
+    await user.type(screen.getByLabelText('Budget Alert Threshold (%)'), '150');
+    await user.click(screen.getByRole('button', { name: 'Update' }));
+
+    expect(await screen.findByText('Alert threshold must be between 1 and 100')).toBeInTheDocument();
+    expect(updateProject).not.toHaveBeenCalled();
+    expect(updateFinancial).not.toHaveBeenCalled();
   });
 
   it('shows no dates for a project without them', async () => {
