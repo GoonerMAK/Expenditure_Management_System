@@ -16,7 +16,7 @@ const describeNotification = ({ project_name, level, threshold, budget, spent, p
   if (level === 'OverBudget') {
     return `${project_name} is over budget: ${formatAmount(spent)} spent of ${formatAmount(budget)}`;
   }
-  return `${project_name} has used ${percent_used}% of its budget, past its ${threshold}% alert`;
+  return `${project_name} has used ${percent_used}% of its budget and reached its ${threshold}% alert`;
 };
 
 const toBadgeText = (count: number) => (count > MAX_BADGE_COUNT ? `${MAX_BADGE_COUNT}+` : String(count));
@@ -63,7 +63,7 @@ const NotificationBell = () => {
   };
 
   const renderList = () => {
-    if (error) {
+    if (error && !data) {
       return <ErrorState message="Could not load notifications." onRetry={refetch} className="p-2" />;
     }
     if (notifications.length === 0) {

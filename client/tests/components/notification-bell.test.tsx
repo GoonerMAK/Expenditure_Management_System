@@ -129,13 +129,13 @@ describe('NotificationBell', () => {
     expect(screen.queryByRole('menuitem', { name: 'Mark all as read' })).not.toBeInTheDocument();
   });
 
-  it('describes a project that passed its alert threshold', async () => {
+  it('describes a project that reached its alert threshold', async () => {
     showNotifications([notification()], 1);
     renderBell();
 
     await openMenu();
 
-    const item = await screen.findByRole('menuitem', { name: /Bridge Renovation has used 85% of its budget, past its 80% alert/ });
+    const item = await screen.findByRole('menuitem', { name: /Bridge Renovation has used 85% of its budget and reached its 80% alert/ });
     expect(item).toHaveTextContent('12 Mar 2026');
     expect(item.querySelector('time')).toHaveAttribute('dateTime', '2026-03-12T10:30:00.000Z');
   });
@@ -213,5 +213,15 @@ describe('NotificationBell', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Could not load notifications.');
     expect(refetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps showing the last loaded notifications when a later refresh fails', async () => {
+    showNotifications([notification()], 1, { error: { status: 500 } });
+    renderBell();
+
+    await openMenu(/1 unread/);
+
+    expect(await screen.findByRole('menuitem', { name: /Bridge Renovation has used 85%/ })).toBeInTheDocument();
+    expect(screen.queryByText('Could not load notifications.')).not.toBeInTheDocument();
   });
 });
