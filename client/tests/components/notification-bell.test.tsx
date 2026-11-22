@@ -215,6 +215,67 @@ describe('NotificationBell', () => {
     expect(refetch).toHaveBeenCalledTimes(2);
   });
 
+  it('leads with the project name and a short status', async () => {
+    showNotifications([
+      notification(),
+      notification({ id: 'n2', project_name: 'Road', level: 'OverBudget', spent: 900, budget: 800, percent_used: 112.5 }),
+    ], 2);
+    renderBell();
+
+    await openMenu();
+
+    const threshold = await screen.findByRole('menuitem', { name: /Bridge Renovation/ });
+    expect(threshold).toHaveTextContent('85% used · passed 80% alert');
+    expect(threshold.querySelector('[data-severity="threshold"]')).toBeInTheDocument();
+    const over = screen.getByRole('menuitem', { name: /^Unread: Road/ });
+    expect(over).toHaveTextContent('Over budget · 900 of 800');
+    expect(over.querySelector('[data-severity="over-budget"]')).toBeInTheDocument();
+  });
+
+  it('flags only unread notifications with a dot', async () => {
+    showNotifications([notification(), notification({ id: 'n2', project_name: 'Road', read_at: '2026-03-12T11:00:00.000Z' })], 1);
+    renderBell();
+
+    await openMenu();
+
+    expect((await screen.findByRole('menuitem', { name: /^Unread: Bridge/ })).querySelector('[data-unread-dot]')).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /^Road/ }).querySelector('[data-unread-dot]')).not.toBeInTheDocument();
+  });
+
+  it('groups notifications into today and earlier', async () => {
+    showNotifications([notification({ id: 'n2', project_name: 'Fresh', created_at: new Date().toISOString() }), notification()], 2);
+    renderBell();
+
+    await openMenu();
+
+    const today = await screen.findByRole('group', { name: 'Today' });
+    const earlier = screen.getByRole('group', { name: 'Earlier' });
+    expect(today).toHaveTextContent('Fresh');
+    expect(earlier).toHaveTextContent('Bridge Renovation');
+  });
+
+  it('filters to unread notifications and keeps the menu open', async () => {
+    showNotifications([notification(), notification({ id: 'n2', project_name: 'Road', read_at: '2026-03-12T11:00:00.000Z' })], 1);
+    renderBell();
+
+    const user = await openMenu();
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Unread (1)' }));
+
+    expect(screen.getByRole('menuitemradio', { name: 'Unread (1)' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('menuitem', { name: /Bridge Renovation/ })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /^Road/ })).not.toBeInTheDocument();
+  });
+
+  it('says so when nothing is unread under the unread filter', async () => {
+    showNotifications([notification({ read_at: '2026-03-12T11:00:00.000Z' })], 0);
+    renderBell();
+
+    const user = await openMenu();
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Unread' }));
+
+    expect(screen.getByText('No unread notifications.')).toBeInTheDocument();
+  });
+
   it('keeps showing the last loaded notifications when a later refresh fails', async () => {
     showNotifications([notification()], 1, { error: { status: 500 } });
     renderBell();
