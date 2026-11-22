@@ -56,12 +56,19 @@ describe('AppPagination', () => {
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
-  it('stays on page 1 when going back from the first page', async () => {
-    const { onPageChange } = renderPagination({ currentPage: 1 });
+  it('disables previous on the first page', () => {
+    renderPagination({ currentPage: 1 });
 
-    await userEvent.click(screen.getByRole('link', { name: /previous/i }));
+    expect(screen.getByRole('link', { name: /previous/i })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('link', { name: /next/i })).toHaveAttribute('aria-disabled', 'false');
+  });
 
-    expect(onPageChange).toHaveBeenCalledWith(1);
+  it('does not request the page already shown', async () => {
+    const { onPageChange } = renderPagination({ currentPage: 2 });
+
+    await userEvent.click(screen.getByRole('link', { name: '2' }));
+
+    expect(onPageChange).not.toHaveBeenCalled();
   });
 
   it('requests the next page', async () => {
@@ -72,12 +79,10 @@ describe('AppPagination', () => {
     expect(onPageChange).toHaveBeenCalledWith(3);
   });
 
-  it('stays on the last page when going forward from it', async () => {
-    const { onPageChange } = renderPagination({ currentPage: 4 });
+  it('disables next on the last page', () => {
+    renderPagination({ currentPage: 4 });
 
-    await userEvent.click(screen.getByRole('link', { name: /next/i }));
-
-    expect(onPageChange).toHaveBeenCalledWith(4);
+    expect(screen.getByRole('link', { name: /next/i })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('prevents the default anchor navigation', async () => {
@@ -88,5 +93,46 @@ describe('AppPagination', () => {
     link.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  describe('with many pages', () => {
+    const pageNumbers = () => screen.getAllByRole('link', { name: /^\d+$/ }).map((link) => link.textContent);
+    const gaps = () => screen.queryAllByText('More pages');
+
+    it('shows every page up to seven', () => {
+      renderPagination({ totalItems: 42 });
+
+      expect(pageNumbers()).toEqual(['1', '2', '3', '4', '5', '6', '7']);
+      expect(gaps()).toHaveLength(0);
+    });
+
+    it('collapses the tail on the first page', () => {
+      renderPagination({ totalItems: 300 });
+
+      expect(pageNumbers()).toEqual(['1', '2', '3', '4', '5', '50']);
+      expect(gaps()).toHaveLength(1);
+    });
+
+    it('keeps the first, last and neighbouring pages around a middle page', () => {
+      renderPagination({ totalItems: 300, currentPage: 25 });
+
+      expect(pageNumbers()).toEqual(['1', '24', '25', '26', '50']);
+      expect(gaps()).toHaveLength(2);
+    });
+
+    it('collapses the head on the last page', () => {
+      renderPagination({ totalItems: 300, currentPage: 50 });
+
+      expect(pageNumbers()).toEqual(['1', '46', '47', '48', '49', '50']);
+      expect(gaps()).toHaveLength(1);
+    });
+
+    it('reaches the last page in one click', async () => {
+      const { onPageChange } = renderPagination({ totalItems: 300, currentPage: 25 });
+
+      await userEvent.click(screen.getByRole('link', { name: '50' }));
+
+      expect(onPageChange).toHaveBeenCalledWith(50);
+    });
   });
 });

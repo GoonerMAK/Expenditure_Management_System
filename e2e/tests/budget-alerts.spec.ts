@@ -153,6 +153,45 @@ test.describe('Notification bell', () => {
     await expect(page.getByText('Alert threshold: 80% → 55%')).toBeVisible();
   });
 
+  test('bell groups alerts by day, marks severity and unread, and filters to unread', async ({ page }) => {
+    const { api } = await apiAs('contributor');
+    const tag = runId();
+    const warnName = `E2E Bell Warn ${tag}`;
+    const overName = `E2E Bell Over ${tag}`;
+    const warn = await createProjectWithThreshold(api, warnName, 50, [
+      { year: 2026, month: 1, expenditure: 700, initial_budget: 1000, revised_budget: null },
+    ]);
+    await createProjectWithThreshold(api, overName, undefined, [
+      { year: 2026, month: 1, expenditure: 900, initial_budget: 800, revised_budget: null },
+    ]);
+    const [warnAlert] = await notificationsFor(api, warn.id);
+    expect((await api.post(`notifications/${warnAlert.id}/read`)).status()).toBe(200);
+
+    await loginInUi(page, 'contributor');
+    const menu = await openBell(page);
+    await expect(menu).toHaveCSS('opacity', '1');
+
+    const today = menu.getByRole('group', { name: 'Today' });
+    const overItem = today.getByRole('menuitem', { name: new RegExp(`^Unread: ${overName} is over budget`) });
+    const warnItem = today.getByRole('menuitem', { name: new RegExp(`^${warnName} has used 70%`) });
+    await expect(overItem).toContainText('Over budget · 900 of 800');
+    await expect(overItem.locator('[data-severity="over-budget"]')).toBeVisible();
+    await expect(overItem.locator('[data-unread-dot]')).toBeVisible();
+    await expect(warnItem).toContainText('70% used · passed 50% alert');
+    await expect(warnItem.locator('[data-severity="threshold"]')).toBeVisible();
+    await expect(warnItem.locator('[data-unread-dot]')).toHaveCount(0);
+    expect((await menu.boundingBox())!.width).toBeGreaterThanOrEqual(380);
+    await page.screenshot({ path: 'screenshots/notification-bell.png' });
+
+    await menu.getByRole('menuitemradio', { name: /^Unread/ }).click();
+    await expect(menu.getByRole('menuitemradio', { name: /^Unread/ })).toHaveAttribute('aria-checked', 'true');
+    await expect(menu.getByRole('menuitem', { name: new RegExp(`^Unread: ${overName} is over budget`) })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: new RegExp(warnName) })).toHaveCount(0);
+
+    await menu.getByRole('menuitemradio', { name: 'All' }).click();
+    await expect(menu.getByRole('menuitem', { name: new RegExp(warnName) })).toBeVisible();
+  });
+
   test('Mark all as read clears the unread count', async ({ page }) => {
     const { api } = await apiAs('contributor');
     await createProjectWithThreshold(api, `E2E Alert All ${runId()}`, 20, [
