@@ -209,6 +209,43 @@ test.describe('project search, filters and sort', () => {
     await expect(projectNames(page).first()).toHaveText(`E2E Paging ${pageTag} 8`);
   });
 
+  test('many pages collapse into a pager that fits the screen', async ({ page }) => {
+    const { api } = await apiAs('contributor');
+    const pageTag = `PL${runId()}`;
+    for (let index = 1; index <= 49; index++) {
+      await createProject(api, { name: `E2E Long Pager ${pageTag} ${String(index).padStart(2, '0')}`, category: searchCategory });
+    }
+
+    await loginInUi(page, 'admin');
+    await searchFor(page, pageTag);
+    const pager = page.getByRole('navigation', { name: 'pagination' });
+    const pageLinks = pager.getByRole('link', { name: /^\d+$/ });
+
+    await expect(pageLinks).toHaveText(['1', '2', '3', '4', '5', '9']);
+    await expect(pager.getByLabel('Go to previous page')).toHaveAttribute('aria-disabled', 'true');
+
+    await pager.getByRole('link', { name: '5', exact: true }).click();
+    await expect(page).toHaveURL(/page=5/);
+    await expect(pageLinks).toHaveText(['1', '4', '5', '6', '9']);
+    await expect(pager.getByText('More pages')).toHaveCount(2);
+
+    await pager.getByRole('link', { name: '9', exact: true }).click();
+    await expect(page).toHaveURL(/page=9/);
+    await expect(projectNames(page)).toHaveText([`E2E Long Pager ${pageTag} 49`]);
+    await expect(pager.getByLabel('Go to next page')).toHaveAttribute('aria-disabled', 'true');
+
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const box = await pager.boundingBox();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await pager.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: 'screenshots/project-pager.png' });
+  });
+
   test('Read-only users can filter by owner', async ({ page }) => {
     const { api } = await apiAs('readOnly');
     const owners = await (await api.get('projects/owners')).json();
