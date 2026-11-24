@@ -21,6 +21,10 @@ React + Vite + Tailwind client, Express + Prisma + Postgres server, Playwright e
 | `tools/test-server.sh` | Server Jest suites on `PORT=4100` (dev server can keep 4000). A second run adds ~5 failures from leftover fixed-email rows |
 | `tools/e2e.sh` | Seed + Playwright. Restores committed screenshots afterwards; `KEEP_SHOTS=1` keeps the new ones (UI redesigned on purpose) |
 
+## Reply style
+- Caveman mode, always, even without the caveman plugin (also cloud sessions): drop articles, filler, pleasantries and hedging; fragments OK; keep technical terms, code, paths and errors exact. Pattern: `[thing] [action] [reason]. [next step].`
+- Why: short replies cost about 75% fewer output tokens, are faster to read, and keep the full technical content. Write normal prose for code, commits, PRs, security warnings and irreversible-action confirmations.
+
 ## Rules
 - Dev DB is container `expenditure-dev-db` on 5433. Never stop other projects' containers on 5432.
 - PR format: title `[branch] Past-tense summary`; body sections Server / Client / Tests / Decisions; screenshot links to `e2e/screenshots/*.png`.
